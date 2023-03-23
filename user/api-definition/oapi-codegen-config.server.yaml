@@ -1,0 +1,6 @@
+package: api
+generate:
+  chi-server: true
+  embedded-spec: true
+  models: true
+output: ./user/internal/userapi.gen.go

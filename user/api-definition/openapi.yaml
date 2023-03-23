@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Users
+  description: Users
+  version: "1"
+servers:
+  - url: https://example
+tags:
+  - name: followers
+  - name: users
+paths:
+  /users:
+    post:
+      tags:
+        - users
+      summary: create a user
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+        required: true
+      responses:
+        '201':
+          description: successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /users/{userId}:
+    get:
+      tags:
+        - users
+      summary: get a user by id
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    delete:
+      tags:
+        - users
+      summary: delete a user by id
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+  /users/{userId}/followers:
+    post:
+      tags:
+        - followers
+      summary: follow a user
+      operationId: followUser
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFollowerRequest'
+        required: true
+      responses:
+        '201':
+          description: successfully created. returns the followed user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    get:
+      tags:
+        - followers
+      summary: get all followers of a user
+      operationId: getFollowers
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+  /users/{userId}/followers/{followerUserId}:
+    delete:
+      tags:
+        - followers
+      summary: unfollow a user
+      operationId: unfollowUser
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: followerUserId
+          in: path
+          description: uuid of follower
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+  /users/{userId}/followees:
+      get:
+        tags:
+          - followers
+        summary: get all users which given user follows
+        operationId: getFollowees
+        parameters:
+          - name: userId
+            in: path
+            description: uuid of user
+            required: true
+            schema:
+              type: string
+              format: uuid
+        responses:
+          '200':
+            description: successful operation
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UserResponse'
+components:
+  schemas:
+    UserResponse:
+      required:
+        - id
+        - username
+      type: object
+      properties:
+        id:
+          type: string
+          example: 206fdb18-ebb2-4cba-98ee-1acdaf8b2855
+          format: uuid
+        username:
+          type: string
+          example: AshKetchum
+    CreateUserRequest:
+      required:
+        - username
+      type: object
+      properties:
+        username:
+          type: string
+          example: AshKetchum
+    CreateFollowerRequest:
+      required:
+        - id
+      type: object
+      properties:
+        id:
+          type: string
+          example: 206fdb18-ebb2-4cba-98ee-1acdaf8b2855
+          format: uuid

@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: Status API
+  description: Status
+  version: "1"
+servers:
+  - url: http://localhost:8000
+tags:
+  - name: statuses
+paths:
+  /statuses:
+    post:
+      tags:
+        - statuses
+      summary: create a status
+      operationId: createStatus
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStatusRequest'
+        required: true
+      responses:
+        '201':
+          description: successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+    get:
+      tags:
+        - statuses
+      summary: get all statuses of a user
+      operationId: getStatuses
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatusResponse'
+  /statuses/{statusId}:
+    get:
+      tags:
+        - statuses
+      summary: get a status by id
+      operationId: getStatus
+      parameters:
+        - name: statusId
+          in: path
+          description: uuid of status
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+    delete:
+      tags:
+        - statuses
+      summary: delete a status by id
+      operationId: deleteStatus
+      parameters:
+        - name: statusId
+          in: path
+          description: uuid of status
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+components:
+  schemas:
+    StatusResponse:
+      type: object
+      required:
+        - id
+        - content
+        - userId
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 206fdb18-ebb2-4cba-98ee-1acdaf8b2855
+        content:
+          type: string
+          example: status content
+        userId:
+          type: string
+          format: uuid
+          example: user which creates the status
+    CreateStatusRequest:
+      type: object
+      required:
+        - content
+        - userId
+      properties:
+        content:
+          type: string
+          example: status content
+        userId:
+          type: string
+          format: uuid
+          example: user which creates the status

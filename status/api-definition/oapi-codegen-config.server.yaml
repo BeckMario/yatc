@@ -1,0 +1,6 @@
+package: statuses
+generate:
+  chi-server: true
+  embedded-spec: true
+  models: true
+output: ./status/internal/statusapi.gen.go
