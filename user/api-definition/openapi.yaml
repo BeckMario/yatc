@@ -86,8 +86,8 @@ paths:
               $ref: '#/components/schemas/CreateFollowerRequest'
         required: true
       responses:
-        '201':
-          description: successfully created. returns the followed user
+        '200':
+          description: successfully followed. returns the followed user
           content:
             application/json:
               schema:

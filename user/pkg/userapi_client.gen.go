@@ -691,7 +691,7 @@ func (r GetFollowersResponse) StatusCode() int {
 type FollowUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *UserResponse
+	JSON200      *UserResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -944,12 +944,12 @@ func ParseFollowUserResponse(rsp *http.Response) (*FollowUserResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest UserResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
+		response.JSON200 = &dest
 
 	}
 
