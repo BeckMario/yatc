@@ -5,14 +5,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"net/http"
-	api "yatc/user/internal"
+	"yatc/user/internal"
 	"yatc/user/internal/followers"
 	iusers "yatc/user/internal/users"
 	"yatc/user/pkg/users"
 )
 
-//go:generate oapi-codegen --config ../openapi/oapi-codegen-config.server.yaml ../openapi/openapi.yaml
-//go:generate oapi-codegen --config ../openapi/oapi-codegen-config.client.yaml ../openapi/openapi.yaml
 func main() {
 	userRepo := iusers.NewInMemoryRepo()
 	_, _ = userRepo.Save(users.User{
@@ -31,11 +29,12 @@ func main() {
 
 	userService := iusers.NewUserService(userRepo)
 	followerService := followers.NewFollowerService(userRepo)
-
 	userApi := api.NewUserApi(userService, followerService)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Route("/", userApi.ConfigureRouter)
+
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic("Oh no!")

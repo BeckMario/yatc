@@ -4,9 +4,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
-	"log"
 	"net/http"
-	"time"
+	"yatc/internal"
 	statuses "yatc/status/pkg"
 )
 
@@ -14,34 +13,7 @@ type Api struct {
 	service statuses.Service
 }
 
-type ErrorResponse struct {
-	Method    string
-	Path      string
-	Timestamp time.Time
-	Message   string
-}
-
-func Error(err error, status int, w http.ResponseWriter, r *http.Request) {
-	log.Println(err.Error())
-	render.Status(r, status)
-	errorRes := ErrorResponse{
-		Method:    r.Method,
-		Path:      r.RequestURI,
-		Timestamp: time.Now().UTC(),
-		Message:   "Error",
-	}
-	render.JSON(w, r, errorRes)
-}
-
-func StatusResponseFromStatus(status statuses.Status) StatusResponse {
-	return StatusResponse{
-		Content: status.Content,
-		Id:      status.Id,
-		UserId:  status.UserId,
-	}
-}
-
-func StatusFromCreateStatusRequest(request CreateStatusRequest) statuses.Status {
+func StatusFromCreateStatusRequest(request statuses.CreateStatusRequest) statuses.Status {
 	return statuses.Status{
 		Id:      uuid.New(),
 		Content: request.Content,
@@ -54,9 +26,9 @@ func NewStatusApi(service statuses.Service) *Api {
 }
 
 func (api *Api) ConfigureRouter(router chi.Router) {
-	handler := HandlerWithOptions(api,
-		ChiServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			Error(err, http.StatusBadRequest, w, r)
+	handler := statuses.HandlerWithOptions(api,
+		statuses.ChiServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		}})
 
 	router.Mount("/", handler)
@@ -66,54 +38,53 @@ func (api *Api) GetStatuses(w http.ResponseWriter, r *http.Request) {
 	service := api.service
 	allStatuses, err := service.GetStatuses()
 	if err != nil {
-		Error(err, http.StatusInternalServerError, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	statusResponses := make([]StatusResponse, len(allStatuses))
+	statusResponses := make([]statuses.StatusResponse, len(allStatuses))
 	for i, status := range allStatuses {
-		statusResponses[i] = StatusResponseFromStatus(status)
+		statusResponses[i] = statuses.StatusResponseFromStatus(status)
 	}
 
-	render.JSON(w, r, statusResponses)
+	internal.ReplyWithStatusOkWithJSON(w, r, statusResponses)
 }
 
 func (api *Api) CreateStatus(w http.ResponseWriter, r *http.Request) {
 	service := api.service
-	var createStatusRequest CreateStatusRequest
+	var createStatusRequest statuses.CreateStatusRequest
 	err := render.Decode(r, &createStatusRequest)
 	if err != nil {
-		Error(err, http.StatusBadRequest, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
 	status := StatusFromCreateStatusRequest(createStatusRequest)
 	status, err = service.CreateStatus(status)
 	if err != nil {
-		Error(err, http.StatusInternalServerError, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, StatusResponseFromStatus(status))
+	internal.ReplyWithStatusWithJSON(w, r, http.StatusCreated, statuses.StatusResponseFromStatus(status))
 }
 
 func (api *Api) DeleteStatus(w http.ResponseWriter, r *http.Request, statusId uuid.UUID) {
 	status, err := api.service.DeleteStatus(statusId)
 	if err != nil {
-		Error(err, http.StatusNotFound, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		return
 	}
 
-	render.JSON(w, r, StatusResponseFromStatus(status))
+	internal.ReplyWithStatusOkWithJSON(w, r, statuses.StatusResponseFromStatus(status))
 }
 
 func (api *Api) GetStatus(w http.ResponseWriter, r *http.Request, statusId uuid.UUID) {
 	status, err := api.service.GetStatus(statusId)
 	if err != nil {
-		Error(err, http.StatusNotFound, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		return
 	}
 
-	render.JSON(w, r, StatusResponseFromStatus(status))
+	internal.ReplyWithStatusOkWithJSON(w, r, statuses.StatusResponseFromStatus(status))
 }

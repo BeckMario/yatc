@@ -9,7 +9,7 @@ type User struct {
 	Followees map[uuid.UUID]struct{}
 }
 
-type UserService interface {
+type Service interface {
 	GetUsers() ([]User, error)
 	GetUser(userId uuid.UUID) (User, error)
 	CreateUser(user User) (User, error)

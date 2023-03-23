@@ -29,7 +29,7 @@ func (service *Service) GetFollowers(userId uuid.UUID) ([]users.User, error) {
 		follower, err := service.repo.Get(followerId)
 		if err != nil {
 			if errors.Is(err, internal.NotFoundError(userId)) {
-				return nil, fmt.Errorf("user not found while populating followers array. error: %v", err)
+				return nil, fmt.Errorf("user not found while populating followers array. error: %w", err)
 			} else {
 				return nil, err
 			}
@@ -50,7 +50,7 @@ func (service *Service) GetFollowees(userId uuid.UUID) ([]users.User, error) {
 		followee, err := service.repo.Get(followerId)
 		if err != nil {
 			if errors.Is(err, internal.NotFoundError(userId)) {
-				return nil, fmt.Errorf("user not found while populating followees array. error: %v", err)
+				return nil, fmt.Errorf("user not found while populating followees array. error: %w", err)
 			} else {
 				return nil, err
 			}

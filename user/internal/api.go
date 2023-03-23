@@ -5,9 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
-	"log"
 	"net/http"
-	"time"
 	"yatc/internal"
 	ifollowers "yatc/user/internal/followers"
 	"yatc/user/pkg/followers"
@@ -15,27 +13,8 @@ import (
 )
 
 type UserApi struct {
-	userService     users.UserService
-	followerService followers.FollowerService
-}
-
-type ErrorResponse struct {
-	Method    string
-	Path      string
-	Timestamp time.Time
-	Message   string
-}
-
-func Error(err error, user int, w http.ResponseWriter, r *http.Request) {
-	log.Println(err.Error())
-	render.Status(r, user)
-	errorRes := ErrorResponse{
-		Method:    r.Method,
-		Path:      r.RequestURI,
-		Timestamp: time.Now().UTC(),
-		Message:   "Error",
-	}
-	render.JSON(w, r, errorRes)
+	userService     users.Service
+	followerService followers.Service
 }
 
 func UserResponseFromUser(user users.User) UserResponse {
@@ -52,14 +31,14 @@ func UserFromCreateUserRequest(request CreateUserRequest) users.User {
 	}
 }
 
-func NewUserApi(userService users.UserService, followerService followers.FollowerService) *UserApi {
+func NewUserApi(userService users.Service, followerService followers.Service) *UserApi {
 	return &UserApi{userService, followerService}
 }
 
 func (api *UserApi) ConfigureRouter(router chi.Router) {
 	handler := HandlerWithOptions(api,
 		ChiServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			Error(err, http.StatusBadRequest, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		}})
 
 	router.Mount("/", handler)
@@ -69,48 +48,47 @@ func (api *UserApi) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var createUserRequest CreateUserRequest
 	err := render.Decode(r, &createUserRequest)
 	if err != nil {
-		Error(err, http.StatusBadRequest, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
 	user := UserFromCreateUserRequest(createUserRequest)
 	user, err = api.userService.CreateUser(user)
 	if err != nil {
-		Error(err, http.StatusInternalServerError, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, UserResponseFromUser(user))
+	internal.ReplyWithStatusWithJSON(w, r, http.StatusCreated, user)
 }
 
 func (api *UserApi) DeleteUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	user, err := api.userService.DeleteUser(userId)
 	if err != nil {
-		Error(err, http.StatusNotFound, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	render.JSON(w, r, UserResponseFromUser(user))
+	internal.ReplyWithStatusOkWithJSON(w, r, UserResponseFromUser(user))
 }
 
 func (api *UserApi) GetUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	user, err := api.userService.GetUser(userId)
 	if err != nil {
-		Error(err, http.StatusNotFound, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
-	render.JSON(w, r, UserResponseFromUser(user))
+	internal.ReplyWithStatusOkWithJSON(w, r, UserResponseFromUser(user))
 }
 
 func (api *UserApi) GetFollowees(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	allUsers, err := api.followerService.GetFollowees(userId)
 	if err != nil {
 		if errors.Is(err, internal.NotFoundError(userId)) {
-			Error(err, http.StatusNotFound, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		} else {
-			Error(err, http.StatusInternalServerError, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -120,16 +98,16 @@ func (api *UserApi) GetFollowees(w http.ResponseWriter, r *http.Request, userId 
 		userResponses[i] = UserResponseFromUser(user)
 	}
 
-	render.JSON(w, r, userResponses)
+	internal.ReplyWithStatusOkWithJSON(w, r, userResponses)
 }
 
 func (api *UserApi) GetFollowers(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	allUsers, err := api.followerService.GetFollowers(userId)
 	if err != nil {
 		if errors.Is(err, internal.NotFoundError(userId)) {
-			Error(err, http.StatusNotFound, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		} else {
-			Error(err, http.StatusInternalServerError, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -139,41 +117,40 @@ func (api *UserApi) GetFollowers(w http.ResponseWriter, r *http.Request, userId 
 		userResponses[i] = UserResponseFromUser(user)
 	}
 
-	render.JSON(w, r, userResponses)
+	internal.ReplyWithStatusOkWithJSON(w, r, userResponses)
 }
 
 func (api *UserApi) FollowUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	var createFollowerRequest CreateFollowerRequest
 	err := render.Decode(r, &createFollowerRequest)
 	if err != nil {
-		Error(err, http.StatusBadRequest, w, r)
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
 	user, err := api.followerService.FollowUser(userId, createFollowerRequest.Id)
 	if err != nil {
 		if errors.Is(err, ifollowers.SelfFollowError) {
-			Error(err, http.StatusBadRequest, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		} else {
-			Error(err, http.StatusNotFound, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		}
 		return
 	}
 
-	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, UserResponseFromUser(user))
+	internal.ReplyWithStatusWithJSON(w, r, http.StatusOK, UserResponseFromUser(user))
 }
 
 func (api *UserApi) UnfollowUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID, followerUserId uuid.UUID) {
 	err := api.followerService.UnfollowUser(userId, followerUserId)
 	if err != nil {
 		if errors.Is(err, ifollowers.SelfFollowError) {
-			Error(err, http.StatusBadRequest, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		} else {
-			Error(err, http.StatusNotFound, w, r)
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		}
 		return
 	}
 
-	render.Status(r, http.StatusOK)
+	internal.ReplyWithStatusOk(r)
 }

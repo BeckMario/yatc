@@ -1,6 +1,8 @@
 package statuses
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type Status struct {
 	Id      uuid.UUID
