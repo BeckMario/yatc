@@ -1,10 +1,17 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 	"yatc/status/pkg"
 	"yatc/timeline/internal"
 	"yatc/user/pkg/followers"
@@ -31,8 +38,28 @@ func main() {
 		fmt.Println(timeline)
 	})
 
-	err := http.ListenAndServe(":8081", r)
-	if err != nil {
-		panic("Oh no!")
+	server := &http.Server{
+		Addr:    ":8081",
+		Handler: r,
 	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+		log.Println("Stopped serving new connections.")
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownRelease()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("HTTP shutdown error: %v", err)
+	}
+	log.Println("Graceful shutdown complete.")
 }

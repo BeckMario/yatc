@@ -47,14 +47,14 @@ func (Run) Status() error {
 // User Run service with dapr sidecar
 func (Run) User() error {
 	mg.Deps(mg.F(Generate.Service, "user", true))
-	return runDapr("user", 8080, 3501)
+	return runDapr("user", 8080, 3502)
 
 }
 
 // Timeline Run service with dapr sidecar
 func (Run) Timeline() error {
 	mg.Deps(mg.F(Generate.Service, "timeline", false))
-	return runDapr("user", 8081, 3502)
+	return runDapr("timeline", 8081, 3501)
 }
 
 // All Run all services
