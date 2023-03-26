@@ -3,7 +3,8 @@ package statuses
 import (
 	"errors"
 	"github.com/google/uuid"
-	statuses "yatc/status/pkg"
+	"github.com/jmoiron/sqlx"
+	"yatc/status/pkg"
 )
 
 type Repository interface {
@@ -50,5 +51,55 @@ func (repo InMemoryRepo) Delete(statusId uuid.UUID) (statuses.Status, error) {
 
 func (repo InMemoryRepo) Create(status statuses.Status) (statuses.Status, error) {
 	repo.Statuses[status.Id] = status
+	return status, nil
+}
+
+type PostgreSQLRepo struct {
+	db *sqlx.DB
+}
+
+type PostgresRepo struct {
+	db *sqlx.DB
+}
+
+func NewPostgresRepo(db *sqlx.DB) Repository {
+	return &PostgresRepo{db}
+}
+
+func (r *PostgresRepo) List() ([]statuses.Status, error) {
+	var allStatuses []statuses.Status
+	err := r.db.Select(&allStatuses, "SELECT * FROM statuses")
+	if err != nil {
+		return nil, err
+	}
+	return allStatuses, nil
+}
+
+func (r *PostgresRepo) Get(statusId uuid.UUID) (statuses.Status, error) {
+	status := statuses.Status{}
+	err := r.db.Get(&status, "SELECT * FROM statuses WHERE id=$1", statusId)
+	if err != nil {
+		return statuses.Status{}, err
+	}
+	return status, nil
+}
+
+func (r *PostgresRepo) Delete(statusId uuid.UUID) (statuses.Status, error) {
+	status, err := r.Get(statusId)
+	if err != nil {
+		return statuses.Status{}, err
+	}
+	_, err = r.db.Exec("DELETE FROM statuses WHERE id=$1", statusId)
+	if err != nil {
+		return statuses.Status{}, err
+	}
+	return status, nil
+}
+
+func (r *PostgresRepo) Create(status statuses.Status) (statuses.Status, error) {
+	_, err := r.db.Exec("INSERT INTO statuses (id, content, user_id) VALUES ($1, $2, $3)", status.Id, status.Content, status.UserId)
+	if err != nil {
+		return statuses.Status{}, err
+	}
 	return status, nil
 }

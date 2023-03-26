@@ -11,6 +11,7 @@ require (
 	github.com/go-chi/render v1.0.2
 	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5
+	github.com/lib/pq v1.2.0
 	github.com/magefile/mage v1.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )

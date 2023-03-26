@@ -5,9 +5,9 @@ import (
 )
 
 type Status struct {
-	Id      uuid.UUID
-	Content string
-	UserId  uuid.UUID
+	Id      uuid.UUID `db:"id"`
+	Content string    `db:"content"`
+	UserId  uuid.UUID `db:"user_id"`
 }
 
 type Service interface {

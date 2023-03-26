@@ -6,6 +6,8 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
@@ -22,8 +24,14 @@ func main() {
 	}
 	defer client.Close()
 
+	db, err := sqlx.Connect("postgres", "user=postgres dbname=postgres password=password sslmode=disable")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	publisher := statuses.NewDaprStatusPublisher(client)
-	repo := statuses.NewInMemoryRepo()
+	//	repo := statuses.NewInMemoryRepo()
+	repo := statuses.NewPostgresRepo(db)
 	service := statuses.NewStatusService(repo, publisher)
 	api := statuses.NewStatusApi(service)
 
