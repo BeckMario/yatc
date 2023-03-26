@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"yatc/internal"
 	"yatc/status/pkg"
 )
 
@@ -35,7 +36,7 @@ func (repo InMemoryRepo) List() ([]statuses.Status, error) {
 func (repo InMemoryRepo) Get(statusId uuid.UUID) (statuses.Status, error) {
 	status, ok := repo.Statuses[statusId]
 	if !ok {
-		return statuses.Status{}, errors.New("no status found")
+		return statuses.Status{}, internal.NotFoundError(statusId)
 	}
 	return status, nil
 }
@@ -43,13 +44,17 @@ func (repo InMemoryRepo) Get(statusId uuid.UUID) (statuses.Status, error) {
 func (repo InMemoryRepo) Delete(statusId uuid.UUID) (statuses.Status, error) {
 	status, exists := repo.Statuses[statusId]
 	if !exists {
-		return statuses.Status{}, errors.New("no status found")
+		return statuses.Status{}, internal.NotFoundError(statusId)
 	}
 	delete(repo.Statuses, statusId)
 	return status, nil
 }
 
 func (repo InMemoryRepo) Create(status statuses.Status) (statuses.Status, error) {
+	_, exists := repo.Statuses[status.Id]
+	if exists {
+		return statuses.Status{}, errors.New("duplicated status")
+	}
 	repo.Statuses[status.Id] = status
 	return status, nil
 }
@@ -79,7 +84,7 @@ func (r *PostgresRepo) Get(statusId uuid.UUID) (statuses.Status, error) {
 	status := statuses.Status{}
 	err := r.db.Get(&status, "SELECT * FROM statuses WHERE id=$1", statusId)
 	if err != nil {
-		return statuses.Status{}, err
+		return statuses.Status{}, internal.NotFoundError(statusId)
 	}
 	return status, nil
 }

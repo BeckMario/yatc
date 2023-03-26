@@ -20,6 +20,7 @@ func (Generate) All() error {
 		{"status", false},
 		{"user", true},
 		{"timeline", false},
+		{"media", false},
 	}
 
 	fns := make([]interface{}, len(services))
