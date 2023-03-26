@@ -1,0 +1,6 @@
+package: media
+generate:
+  chi-server: true
+  embedded-spec: true
+  models: true
+output: ./media/internal/mediaapi.gen.go

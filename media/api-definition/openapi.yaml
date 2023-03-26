@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: Media API
+  description: Media
+  version: "1"
+servers:
+  - url: 'http://localhost:8083'
+tags:
+  - name: media
+paths:
+  /media:
+    post:
+      tags:
+        - media
+      summary: upload a media by mediaId
+      operationId: uploadMedia
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaUpload'
+      responses:
+        '200':
+          description: successful upload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+
+  /media/{mediaId}:
+    get:
+      tags:
+        - media
+      summary: download a media by mediaId
+      operationId: downloadMedia
+      parameters:
+        - name: mediaId
+          in: path
+          description: uuid of media
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/MediaDownloadResponse'
+
+components:
+  schemas:
+    MediaDownloadResponse:
+      type: object
+      required:
+        - media
+      properties:
+        media:
+          type: string
+          format: binary
+    MediaMetadata:
+      type: object
+      required:
+        - mediaFormat
+      properties:
+        mediaFormat:
+          type: string
+    MediaUpload:
+      type: object
+      required:
+        - mediaMetadata
+        - media
+      properties:
+        mediaMetadata:
+          $ref: '#/components/schemas/MediaMetadata'
+        media:
+          type: string
+          format: binary
+    MediaUploadResponse:
+      type: object
+      required:
+        - mediaId
+      properties:
+        mediaId:
+          type: string
+          format: uuid
