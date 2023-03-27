@@ -3,7 +3,6 @@ package statuses
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -11,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"yatc/internal"
 	statuses "yatc/status/pkg"
 )
 
@@ -32,7 +32,7 @@ func (service *MockService) GetStatus(statusId uuid.UUID) (statuses.Status, erro
 			return status, nil
 		}
 	}
-	return statuses.Status{}, fmt.Errorf("status not found")
+	return statuses.Status{}, internal.NotFoundError(statusId)
 }
 
 func (service *MockService) CreateStatus(status statuses.Status) (statuses.Status, error) {
@@ -47,7 +47,7 @@ func (service *MockService) DeleteStatus(statusId uuid.UUID) (statuses.Status, e
 			return status, nil
 		}
 	}
-	return statuses.Status{}, fmt.Errorf("status not found")
+	return statuses.Status{}, internal.NotFoundError(statusId)
 }
 
 func TestApi_GetStatuses(t *testing.T) {

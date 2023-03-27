@@ -1,6 +1,7 @@
 package statuses
 
 import (
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
@@ -72,7 +73,11 @@ func (api *Api) CreateStatus(w http.ResponseWriter, r *http.Request) {
 func (api *Api) DeleteStatus(w http.ResponseWriter, r *http.Request, statusId uuid.UUID) {
 	status, err := api.service.DeleteStatus(statusId)
 	if err != nil {
-		internal.ReplyWithError(w, r, err, http.StatusNotFound)
+		if errors.Is(err, internal.NotFoundError(statusId)) {
+			internal.ReplyWithError(w, r, err, http.StatusNotFound)
+		} else {
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -82,7 +87,11 @@ func (api *Api) DeleteStatus(w http.ResponseWriter, r *http.Request, statusId uu
 func (api *Api) GetStatus(w http.ResponseWriter, r *http.Request, statusId uuid.UUID) {
 	status, err := api.service.GetStatus(statusId)
 	if err != nil {
-		internal.ReplyWithError(w, r, err, http.StatusNotFound)
+		if errors.Is(err, internal.NotFoundError(statusId)) {
+			internal.ReplyWithError(w, r, err, http.StatusNotFound)
+		} else {
+			internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		}
 		return
 	}
 
