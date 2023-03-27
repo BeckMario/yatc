@@ -12,5 +12,5 @@ type Timeline struct {
 
 type Service interface {
 	GetTimeline(userId uuid.UUID) (Timeline, error)
-	UpdateTimeline(userId uuid.UUID, status statuses.Status) (Timeline, error)
+	UpdateTimelines(userId uuid.UUID, status statuses.Status) error
 }

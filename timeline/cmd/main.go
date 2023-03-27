@@ -20,7 +20,7 @@ import (
 func main() {
 	repo := timelines.NewInMemoryRepo()
 	client := followers.NewFollowerClient("http://localhost:3501")
-	service := timelines.NewTweetService(repo, client)
+	service := timelines.NewTimelineService(repo, client)
 	api := timelines.NewTimelineApi(service)
 
 	r := chi.NewRouter()
@@ -30,12 +30,11 @@ func main() {
 	subscriber := statuses.NewDaprTweetSubscriber(r)
 	subscriber.Subscribe(func(status statuses.Status) {
 		fmt.Println("Got Tweet:", status)
-		timeline, err := service.UpdateTimeline(status.UserId, status)
+		err := service.UpdateTimelines(status.UserId, status)
 		if err != nil {
 			fmt.Printf("Error: %s\n", err.Error())
 			return
 		}
-		fmt.Println(timeline)
 	})
 
 	server := &http.Server{
