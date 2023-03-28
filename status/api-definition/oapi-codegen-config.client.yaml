@@ -1,0 +1,4 @@
+package: statuses
+generate:
+  client: true
+output: ./status/pkg/statusapi_client.gen.go

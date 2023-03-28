@@ -24,9 +24,21 @@ func main() {
 	}
 	defer client.Close()
 
-	db, err := sqlx.Connect("postgres", "user=postgres dbname=postgres password=password sslmode=disable")
+	//TODO: Use Config
+	db, err := sqlx.Connect("postgres", "postgres://postgres:password@db:5432/postgres?sslmode=disable&connect_timeout=5") //"user=postgres dbname=postgres password=password sslmode=disable")
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	//TODO: Temporary use migration?
+	schema := `CREATE TABLE IF NOT EXISTS statuses (
+		id UUID PRIMARY KEY,
+		content TEXT,
+		user_id UUID
+	);`
+	_, err = db.Exec(schema)
+	if err != nil {
+		panic(err)
 	}
 
 	publisher := statuses.NewDaprStatusPublisher(client)

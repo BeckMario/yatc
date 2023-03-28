@@ -16,6 +16,7 @@ type FollowerClient struct {
 }
 
 func NewFollowerClient(server string) *FollowerClient {
+	//TODO: Could use NewClientWithResponses
 	httpClient, _ := api.NewClient(server, api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		//TODO: Config?
 		req.Header.Add("dapr-app-id", "user-service")
