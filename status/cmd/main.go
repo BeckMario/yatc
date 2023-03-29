@@ -1,78 +1,53 @@
 package main
 
 import (
-	"context"
-	"errors"
 	dapr "github.com/dapr/go-sdk/client"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"go.uber.org/zap"
+	"yatc/internal"
 	"yatc/status/internal"
 )
 
 func main() {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
 	client, err := dapr.NewClient()
 	if err != nil {
-		panic(err)
+		logger.Fatal("cant connect to dapr sidecar", zap.Error(err))
 	}
 	defer client.Close()
 
 	//TODO: Use Config
 	db, err := sqlx.Connect("postgres", "postgres://postgres:password@db:5432/postgres?sslmode=disable&connect_timeout=5") //"user=postgres dbname=postgres password=password sslmode=disable")
 	if err != nil {
-		log.Fatalln(err)
+		logger.Fatal("cant connect to database", zap.Error(err))
 	}
 
 	//TODO: Temporary use migration?
 	schema := `CREATE TABLE IF NOT EXISTS statuses (
-		id UUID PRIMARY KEY,
-		content TEXT,
-		user_id UUID
-	);`
+			id UUID PRIMARY KEY,
+			content TEXT,
+			user_id UUID
+		);`
+
 	_, err = db.Exec(schema)
 	if err != nil {
-		panic(err)
+		logger.Fatal("cant apply default scheme to database", zap.Error(err))
 	}
 
 	publisher := statuses.NewDaprStatusPublisher(client)
-	//	repo := statuses.NewInMemoryRepo()
+	//repo := statuses.NewInMemoryRepo()
 	repo := statuses.NewPostgresRepo(db)
 	service := statuses.NewStatusService(repo, publisher)
 	api := statuses.NewStatusApi(service)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(internal.ZapLogger(logger))
 	r.Route("/", api.ConfigureRouter)
 
-	server := &http.Server{
-		Addr:    ":8082",
-		Handler: r,
-	}
-
-	go func() {
-		err = server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-		log.Println("Stopped serving new connections.")
-	}()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownRelease()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP shutdown error: %v", err)
-	}
-	log.Println("Graceful shutdown complete.")
+	server := internal.NewServer(logger, 8082, r)
+	server.StartAndWait()
 }
