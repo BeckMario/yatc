@@ -3,12 +3,15 @@ package statuses
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"yatc/internal"
 )
 
 func TestDaprStatusSubscriber_SubscribeHandler(t *testing.T) {
@@ -20,8 +23,14 @@ func TestDaprStatusSubscriber_SubscribeHandler(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
+	config := internal.PubSubConfig{
+		Name:  "pubsub",
+		Topic: "status",
+	}
+	route := fmt.Sprintf("%s/%s", BaseRoute, config.Topic)
+
 	r := chi.NewRouter()
-	r.Get("/dapr/subscribe", subscribeHandler)
+	r.Get("/dapr/subscribe", getSubscribeHandler(config, route))
 
 	// When
 	r.ServeHTTP(recorder, req)
@@ -46,8 +55,8 @@ func TestDaprStatusSubscriber_SubscribeHandler(t *testing.T) {
 		Routes     string `json:"route"`
 	}{
 		{
-			PubSubName,
-			Topic,
+			config.Name,
+			config.Topic,
 			route,
 		},
 	}
@@ -58,7 +67,11 @@ func TestDaprStatusSubscriber_SubscribeHandler(t *testing.T) {
 func TestDaprStatusSubscriber_Subscribe(t *testing.T) {
 	// Given
 	router := chi.NewRouter()
-	sub := NewDaprTweetSubscriber(router)
+	config := internal.PubSubConfig{
+		Name:  "pubsub",
+		Topic: "status",
+	}
+	sub := NewDaprTweetSubscriber(router, zap.NewNop(), config)
 
 	expectedStatus := Status{
 		Id:      uuid.New(),

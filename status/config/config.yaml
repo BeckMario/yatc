@@ -1,0 +1,9 @@
+port: "8082"
+dapr:
+  app-ids:
+    status: "status-service"
+  grpc-port: "50001"
+  pubsub:
+    name: "pubsub"
+    topic: "status"
+database: "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"

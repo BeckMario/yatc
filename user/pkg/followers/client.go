@@ -2,6 +2,7 @@ package followers
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"net/http"
@@ -14,11 +15,11 @@ type FollowerClient struct {
 	httpClient api.ClientInterface
 }
 
-func NewFollowerClient(server string) *FollowerClient {
+func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
 	//TODO: Could use NewClientWithResponses
+	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
 	httpClient, _ := api.NewClient(server, api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		//TODO: Config?
-		req.Header.Add("dapr-app-id", "user-service")
+		req.Header.Add("dapr-app-id", config.AppIds.User)
 		return nil
 	}))
 

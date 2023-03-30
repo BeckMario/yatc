@@ -2,8 +2,9 @@ package main
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
+	"strconv"
 	"yatc/internal"
 	"yatc/status/pkg"
 	"yatc/timeline/internal"
@@ -11,19 +12,27 @@ import (
 )
 
 func main() {
-	repo := timelines.NewInMemoryRepo()
-	client := followers.NewFollowerClient("http://localhost:3501")
-	service := timelines.NewTimelineService(repo, client)
-	api := timelines.NewTimelineApi(service)
-
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
+	var config internal.Config
+	err := cleanenv.ReadConfig("timeline/config/config.yaml", &config)
+	if err != nil {
+		description, _ := cleanenv.GetDescription(&config, nil)
+		logger.Info("Config usage" + description)
+		logger.Fatal("couldn't read config", zap.Error(err))
+	}
+
+	repo := timelines.NewInMemoryRepo()
+	client := followers.NewFollowerClient(config.Dapr)
+	service := timelines.NewTimelineService(repo, client)
+	api := timelines.NewTimelineApi(service)
+
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(internal.ZapLogger(logger))
 	r.Route("/", api.ConfigureRouter)
 
-	subscriber := statuses.NewDaprTweetSubscriber(r, logger)
+	subscriber := statuses.NewDaprTweetSubscriber(r, logger, config.Dapr.PubSub)
 	subscriber.Subscribe(func(status statuses.Status) {
 		err := service.UpdateTimelines(status.UserId, status)
 		if err != nil {
@@ -31,6 +40,10 @@ func main() {
 		}
 	})
 
-	server := internal.NewServer(logger, 8081, r)
+	port, err := strconv.Atoi(config.Port)
+	if err != nil {
+		logger.Fatal("port not a int", zap.String("port", config.Port))
+	}
+	server := internal.NewServer(logger, port, r)
 	server.StartAndWait()
 }

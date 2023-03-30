@@ -8,15 +8,12 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"yatc/internal"
 )
 
 const (
-	PubSubName = "pubsub"
-	Topic      = "status"
-	BaseRoute  = "/internal/pubsub/receive"
+	BaseRoute = "/internal/pubsub/receive"
 )
-
-var route = fmt.Sprintf("%s/%s", BaseRoute, Topic)
 
 type Subscriber interface {
 	Subscribe(handler func(status Status)) error
@@ -30,34 +27,38 @@ type StatusCloudEvent struct {
 type DaprStatusSubscriber struct {
 	router chi.Router
 	logger *zap.Logger
+	route  string
 }
 
-func subscribeHandler(w http.ResponseWriter, r *http.Request) {
-	subscriptions := []struct {
-		PubSubName string `json:"pubsubname"`
-		Topic      string `json:"topic"`
-		Routes     string `json:"route"`
-	}{
-		{
-			PubSubName,
-			Topic,
-			route,
-		},
+func getSubscribeHandler(config internal.PubSubConfig, route string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		subscriptions := []struct {
+			PubSubName string `json:"pubsubname"`
+			Topic      string `json:"topic"`
+			Routes     string `json:"route"`
+		}{
+			{
+				config.Name,
+				config.Topic,
+				route,
+			},
+		}
+
+		render.Status(r, http.StatusOK)
+		render.JSON(w, r, subscriptions)
 	}
-
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, subscriptions)
 }
 
-func NewDaprTweetSubscriber(router chi.Router, logger *zap.Logger) *DaprStatusSubscriber {
-	router.Get("/dapr/subscribe", subscribeHandler)
-	return &DaprStatusSubscriber{router, logger}
+func NewDaprTweetSubscriber(router chi.Router, logger *zap.Logger, config internal.PubSubConfig) *DaprStatusSubscriber {
+	route := fmt.Sprintf("%s/%s", BaseRoute, config.Topic)
+	router.Get("/dapr/subscribe", getSubscribeHandler(config, route))
+
+	return &DaprStatusSubscriber{router, logger, route}
 }
 
 // Subscribe Currently there can only be one subscribe handler
 func (sub *DaprStatusSubscriber) Subscribe(handler func(status Status)) {
-	route := fmt.Sprintf("%s/%s", BaseRoute, Topic)
-	sub.router.Post(route, func(w http.ResponseWriter, r *http.Request) {
+	sub.router.Post(sub.route, func(w http.ResponseWriter, r *http.Request) {
 		cloudEvent := &StatusCloudEvent{}
 		var bodyBytes []byte
 		bodyBytes, _ = io.ReadAll(r.Body)

@@ -44,7 +44,7 @@ func runDaprArgs(service string, appPort int, daprPort int) []string {
 func runDapr(service string, appPort int, daprPort int) error {
 	args := []string{"run"}
 	args = append(args, runDaprArgs(service, appPort, daprPort)...)
-	args = append(args, []string{"-G", "50001", "--", "go", "run", service + "/cmd/main.go"}...)
+	args = append(args, []string{"--", "go", "run", service + "/cmd/main.go"}...)
 	return sh.RunWithV(nil, "dapr", args...)
 }
 
@@ -109,9 +109,6 @@ func Dagger() error {
 
 	// Prepare Status Client. Dapr is needed as Dependency
 	status := client.Container().From("ubuntu:18.04").
-		WithMountedDirectory("/test-components", directory.Directory("./status/cmd/test-components")).
-		WithServiceBinding("db", postgres).
-		WithServiceBinding("redis", redis).
 		// Prepare Dapr
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "wget"}).
@@ -119,7 +116,13 @@ func Dagger() error {
 		WithExec([]string{"chmod", "+x", "install.sh"}).
 		WithExec([]string{"./install.sh"}).
 		WithExec([]string{"dapr", "init", "--slim"}).
+		// Prepare Service
+		WithMountedDirectory("/test-components", directory.Directory("./status/config/test-components")).
+		WithServiceBinding("db", postgres).
+		WithServiceBinding("redis", redis).
+		WithFile("status/config/config.yaml", directory.File("./status/config/config.yaml")).
 		WithFile("status_service", output).
+		WithEnvVariable("DATABASE", "postgres://postgres:password@db:5432/postgres?sslmode=disable").
 		// Run actual service with dapr sidecar
 		WithExec(runStatusWithDapr).
 		WithExposedPort(3500)

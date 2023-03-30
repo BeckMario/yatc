@@ -1,17 +1,12 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"github.com/ilyakaznacheev/cleanenv"
+	"go.uber.org/zap"
+	"strconv"
+	"yatc/internal"
 	"yatc/user/internal"
 	"yatc/user/internal/followers"
 	iusers "yatc/user/internal/users"
@@ -19,6 +14,17 @@ import (
 )
 
 func main() {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	var config internal.Config
+	err := cleanenv.ReadConfig("user/config/config.yaml", &config)
+	if err != nil {
+		description, _ := cleanenv.GetDescription(&config, nil)
+		logger.Info("Config usage" + description)
+		logger.Fatal("couldn't read config", zap.Error(err))
+	}
+
 	userRepo := iusers.NewInMemoryRepo()
 	_, _ = userRepo.Save(users.User{
 		Id:        uuid.MustParse("dc52828f-9c08-4e38-ace0-bf2bd87bfff6"),
@@ -39,31 +45,13 @@ func main() {
 	userApi := api.NewUserApi(userService, followerService)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(internal.ZapLogger(logger))
 	r.Route("/", userApi.ConfigureRouter)
 
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
+	port, err := strconv.Atoi(config.Port)
+	if err != nil {
+		logger.Fatal("port not a int", zap.String("port", config.Port))
 	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-		log.Println("Stopped serving new connections.")
-	}()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownRelease()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP shutdown error: %v", err)
-	}
-	log.Println("Graceful shutdown complete.")
+	server := internal.NewServer(logger, port, r)
+	server.StartAndWait()
 }

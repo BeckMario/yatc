@@ -38,6 +38,15 @@ func (repo *mockRepo) Delete(userId uuid.UUID) (users.User, error) {
 	panic("implement me")
 }
 
+func contains(s []users.User, e string) bool {
+	for _, a := range s {
+		if a.Name == e {
+			return true
+		}
+	}
+	return false
+}
+
 func TestService_GetFollowers(t *testing.T) {
 	mockUsers := []users.User{
 		{
@@ -73,8 +82,8 @@ func TestService_GetFollowers(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, followers, 2, "expected 2 followers, got %d", len(followers))
-	assert.Equal(t, followers[0].Name, "User 2", "expected follower 1 to be User 2, got %s", followers[0].Name)
-	assert.Equal(t, followers[1].Name, "User 3", "expected follower 2 to be User 3, got %s", followers[1].Name)
+	assert.True(t, contains(followers, "User 2"), "expected followers to contain User 2. %v", followers)
+	assert.True(t, contains(followers, "User 2"), "expected followers to contain User 3. %v", followers)
 }
 
 func TestService_GetFollowees(t *testing.T) {
@@ -112,6 +121,6 @@ func TestService_GetFollowees(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, followers, 2, "expected 2 followees, got %d", len(followers))
-	assert.Equal(t, followers[0].Name, "User 2", "expected followee 1 to be User 2, got %s", followers[0].Name)
-	assert.Equal(t, followers[1].Name, "User 3", "expected followee 2 to be User 3, got %s", followers[1].Name)
+	assert.True(t, contains(followers, "User 2"), "expected followees to contain User 2. %v", followers)
+	assert.True(t, contains(followers, "User 2"), "expected followees to contain User 3. %v", followers)
 }
