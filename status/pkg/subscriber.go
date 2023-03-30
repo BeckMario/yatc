@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 )
@@ -28,6 +29,7 @@ type StatusCloudEvent struct {
 
 type DaprStatusSubscriber struct {
 	router chi.Router
+	logger *zap.Logger
 }
 
 func subscribeHandler(w http.ResponseWriter, r *http.Request) {
@@ -47,27 +49,23 @@ func subscribeHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, subscriptions)
 }
 
-func NewDaprTweetSubscriber(router chi.Router) *DaprStatusSubscriber {
+func NewDaprTweetSubscriber(router chi.Router, logger *zap.Logger) *DaprStatusSubscriber {
 	router.Get("/dapr/subscribe", subscribeHandler)
-	return &DaprStatusSubscriber{router}
+	return &DaprStatusSubscriber{router, logger}
 }
 
 // Subscribe Currently there can only be one subscribe handler
 func (sub *DaprStatusSubscriber) Subscribe(handler func(status Status)) {
 	route := fmt.Sprintf("%s/%s", BaseRoute, Topic)
 	sub.router.Post(route, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Receiving Event")
-
 		cloudEvent := &StatusCloudEvent{}
 		var bodyBytes []byte
 		bodyBytes, _ = io.ReadAll(r.Body)
 		err := json.Unmarshal(bodyBytes, &cloudEvent)
 		if err != nil {
-			fmt.Println(err)
-			//TODO: Handle?
-			panic("received message is not a cloudevent")
+			// Shouldn't normally happen when using dapr to publish and subscribe
+			sub.logger.DPanic("message not a cloudevent", zap.Error(err))
 		}
-
 		handler(cloudEvent.Status)
 		render.Status(r, http.StatusOK)
 	})

@@ -1,17 +1,10 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"go.uber.org/zap"
+	"yatc/internal"
 	"yatc/status/pkg"
 	"yatc/timeline/internal"
 	"yatc/user/pkg/followers"
@@ -23,42 +16,21 @@ func main() {
 	service := timelines.NewTimelineService(repo, client)
 	api := timelines.NewTimelineApi(service)
 
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Route("/", api.ConfigureRouter)
 
-	subscriber := statuses.NewDaprTweetSubscriber(r)
+	subscriber := statuses.NewDaprTweetSubscriber(r, logger)
 	subscriber.Subscribe(func(status statuses.Status) {
-		fmt.Println("Got Tweet:", status)
 		err := service.UpdateTimelines(status.UserId, status)
 		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
-			return
+			logger.Error("updateing timelines", zap.Error(err), zap.Any("status", status))
 		}
 	})
 
-	server := &http.Server{
-		Addr:    ":8081",
-		Handler: r,
-	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-		log.Println("Stopped serving new connections.")
-	}()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownRelease()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP shutdown error: %v", err)
-	}
-	log.Println("Graceful shutdown complete.")
+	server := internal.NewServer(logger, 8081, r)
+	server.StartAndWait()
 }

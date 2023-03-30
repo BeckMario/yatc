@@ -2,7 +2,6 @@ package followers
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"net/http"
@@ -28,18 +27,15 @@ func NewFollowerClient(server string) *FollowerClient {
 
 func ToClientError(response *http.Response, err error) *internal.ClientError {
 	if err != nil {
-		fmt.Printf("Received Client Error: %s\n", err)
 		return internal.NewClientError(nil, err)
 	}
+
 	if response.StatusCode != http.StatusOK {
-		fmt.Printf("StatusCode not ok: %d\n", response.StatusCode)
 		var errorResponse internal.ErrorResponse
 		err := render.DecodeJSON(response.Body, &errorResponse)
 		if err != nil {
 			return internal.NewClientError(nil, err)
 		}
-
-		fmt.Printf("ErrorResponse: %v\n", errorResponse)
 
 		if response.StatusCode == http.StatusNotFound {
 			id, err := uuid.Parse(errorResponse.Message)
