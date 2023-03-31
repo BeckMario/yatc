@@ -16,27 +16,6 @@ import (
 type Run mg.Namespace
 type Generate mg.Namespace
 
-// All Generate all chi servers and clients(if needed) from openapi specs
-func (Generate) All() error {
-	services := []struct {
-		name      string
-		hasClient bool
-	}{
-		{"status", true},
-		{"user", true},
-		{"timeline", false},
-		{"media", false},
-	}
-
-	fns := make([]interface{}, len(services))
-	for i, service := range services {
-		fn := mg.F(Generate.Service, service.name, service.hasClient)
-		fns[i] = fn
-	}
-	mg.Deps(fns...)
-	return nil
-}
-
 func runDaprArgs(service string, appPort int, daprPort int) []string {
 	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
 		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./components"}

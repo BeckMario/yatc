@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
+	"dagger.io/dagger"
 	"fmt"
-	"github.com/magefile/mage/sh"
+	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/target"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -19,6 +21,12 @@ type oapiGenPaths struct {
 }
 type oapiConfig struct {
 	Output string `yaml:"output"`
+}
+
+func oapiCodeGenBase(client *dagger.Client) *dagger.Container {
+	return goBase(client).
+		WithExec([]string{"go", "install", "github.com/deepmap/oapi-codegen/cmd/oapi-codegen@master"}).
+		WithMountedDirectory("/app", Repository(client))
 }
 
 func newOapiConfig(path string) (*oapiConfig, error) {
@@ -88,18 +96,45 @@ func (paths *oapiGenPaths) hasBeenModified() (bool, error) {
 	return serverChange, nil
 }
 
-func (paths *oapiGenPaths) generate() error {
+func (paths *oapiGenPaths) generate(client *dagger.Client) error {
 	if paths.oapiClientConfig != nil {
-		err := sh.RunWith(nil, "oapi-codegen", "-config", *paths.oapiClientConfig, paths.openapi)
+		content, err := oapiCodeGenBase(client).
+			WithExec([]string{"oapi-codegen", "-config", *paths.oapiClientConfig, paths.openapi}).
+			File(*paths.clientOutput).
+			Contents(context.Background())
 		if err != nil {
-			return err
+			return fmt.Errorf("api generate failed: %w", err)
+		}
+
+		err = os.WriteFile(*paths.clientOutput, []byte(content), 0o600)
+		if err != nil {
+			return fmt.Errorf("api generate failed: %w", err)
 		}
 	}
-	return sh.RunWith(nil, "oapi-codegen", "-config", paths.oapiServerConfig, paths.openapi)
+
+	content, err := oapiCodeGenBase(client).
+		WithExec([]string{"oapi-codegen", "-config", paths.oapiServerConfig, paths.openapi}).
+		File(paths.serverOutput).
+		Contents(context.Background())
+	if err != nil {
+		return fmt.Errorf("api generate failed: %w", err)
+	}
+
+	err = os.WriteFile(paths.serverOutput, []byte(content), 0o600)
+	if err != nil {
+		return fmt.Errorf("api generate failed: %w", err)
+	}
+
+	return nil
 }
 
 // Service Generate chi server and client(if needed) for given services from openapi spec
 func (Generate) Service(service string, needsClient bool) error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
 
 	openapi, err := newOapiGenPaths(service, needsClient)
 	if err != nil {
@@ -112,10 +147,31 @@ func (Generate) Service(service string, needsClient bool) error {
 
 	if modified {
 		fmt.Println("Generate with oapi-codegen")
-		if err := openapi.generate(); err != nil {
+		if err := openapi.generate(client); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+// All Generate all chi servers and clients(if needed) from openapi specs
+func (Generate) All() error {
+	services := []struct {
+		name      string
+		hasClient bool
+	}{
+		{"status", true},
+		{"user", true},
+		{"timeline", false},
+		{"media", false},
+	}
+
+	fns := make([]interface{}, len(services))
+	for i, service := range services {
+		fn := mg.F(Generate.Service, service.name, service.hasClient)
+		fns[i] = fn
+	}
+	mg.Deps(fns...)
 	return nil
 }

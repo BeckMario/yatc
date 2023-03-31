@@ -2,6 +2,10 @@ package main
 
 import "dagger.io/dagger"
 
+func Repository(client *dagger.Client) *dagger.Directory {
+	return client.Host().Directory(".")
+}
+
 func RepositoryGoCodeOnly(client *dagger.Client) *dagger.Directory {
 	return client.Host().Directory(".", dagger.HostDirectoryOpts{
 		Include: []string{
