@@ -49,7 +49,7 @@ func getSubscribeHandler(config internal.PubSubConfig, route string) func(w http
 	}
 }
 
-func NewDaprTweetSubscriber(router chi.Router, logger *zap.Logger, config internal.PubSubConfig) *DaprStatusSubscriber {
+func NewDaprStatusSubscriber(router chi.Router, logger *zap.Logger, config internal.PubSubConfig) *DaprStatusSubscriber {
 	route := fmt.Sprintf("%s/%s", BaseRoute, config.Topic)
 	router.Get("/dapr/subscribe", getSubscribeHandler(config, route))
 

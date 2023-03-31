@@ -34,7 +34,7 @@ func main() {
 	r.Use(internal.ZapLogger(logger))
 	r.Route("/", api.ConfigureRouter)
 
-	subscriber := statuses.NewDaprTweetSubscriber(r, logger, config.Dapr.PubSub)
+	subscriber := statuses.NewDaprStatusSubscriber(r, logger, config.Dapr.PubSub)
 	subscriber.Subscribe(func(status statuses.Status) {
 		err := service.UpdateTimelines(status.UserId, status)
 		if err != nil {

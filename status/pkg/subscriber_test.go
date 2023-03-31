@@ -71,7 +71,7 @@ func TestDaprStatusSubscriber_Subscribe(t *testing.T) {
 		Name:  "pubsub",
 		Topic: "status",
 	}
-	sub := NewDaprTweetSubscriber(router, zap.NewNop(), config)
+	sub := NewDaprStatusSubscriber(router, zap.NewNop(), config)
 
 	expectedStatus := Status{
 		Id:      uuid.New(),
