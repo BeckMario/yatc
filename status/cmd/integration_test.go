@@ -5,12 +5,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"os"
 	"testing"
 	statuses "yatc/status/pkg"
 )
 
 func Test_GetStatus(t *testing.T) {
-	client, _ := statuses.NewClientWithResponses("http://status-dapr:3500", statuses.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+	serverAddr := os.Getenv("STATUS_SERVICE_ADDR")
+	if serverAddr == "" {
+		t.Skipf("set STATUS_SERVICE_ADDR to run this integration test")
+	}
+
+	client, _ := statuses.NewClientWithResponses(serverAddr, statuses.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("dapr-app-id", "status-service")
 		return nil
 	}))

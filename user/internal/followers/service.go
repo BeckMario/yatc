@@ -81,9 +81,16 @@ func (service *Service) FollowUser(userToFollowId uuid.UUID, userWhichFollowsId 
 	userWhichFollows.Followees[userToFollowId] = struct{}{}
 
 	userToFollow, err = service.repo.Save(userToFollow)
-	_, err = service.repo.Save(userWhichFollows)
+	if err != nil {
+		return users.User{}, err
+	}
 
-	return userToFollow, err
+	_, err = service.repo.Save(userWhichFollows)
+	if err != nil {
+		return users.User{}, err
+	}
+
+	return userToFollow, nil
 }
 
 func (service *Service) UnfollowUser(userToUnfollowId uuid.UUID, userWhichUnfollowsId uuid.UUID) error {
@@ -112,7 +119,13 @@ func (service *Service) UnfollowUser(userToUnfollowId uuid.UUID, userWhichUnfoll
 	delete(userWhichUnfollows.Followees, userToUnfollowId)
 
 	userToUnfollow, err = service.repo.Save(userToUnfollow)
+	if err != nil {
+		return err
+	}
 	_, err = service.repo.Save(userWhichUnfollows)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }

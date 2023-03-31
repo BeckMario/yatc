@@ -73,7 +73,10 @@ func TestService_GetFollowers(t *testing.T) {
 
 	mockRepo := newMockRepo()
 	for _, user := range mockUsers {
-		mockRepo.Save(user)
+		_, err := mockRepo.Save(user)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 
 	service := NewFollowerService(mockRepo)
@@ -112,7 +115,10 @@ func TestService_GetFollowees(t *testing.T) {
 
 	mockRepo := newMockRepo()
 	for _, user := range mockUsers {
-		mockRepo.Save(user)
+		_, err := mockRepo.Save(user)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 
 	service := NewFollowerService(mockRepo)

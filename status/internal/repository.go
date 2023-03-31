@@ -59,10 +59,6 @@ func (repo InMemoryRepo) Create(status statuses.Status) (statuses.Status, error)
 	return status, nil
 }
 
-type PostgreSQLRepo struct {
-	db *sqlx.DB
-}
-
 type PostgresRepo struct {
 	db *sqlx.DB
 }

@@ -14,7 +14,9 @@ import (
 
 func main() {
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func(logger *zap.Logger) {
+		_ = logger.Sync()
+	}(logger)
 
 	var config internal.Config
 	err := cleanenv.ReadConfig("status/config/config.yaml", &config)

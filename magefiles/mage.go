@@ -79,10 +79,45 @@ func (Run) All() {
 	mg.Deps(Run.User, Run.Status, Run.Timeline)
 }
 
+func UnitTest() error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	stdout, err := goBase(client).
+		WithExec([]string{"go", "test", "-v", "./..."}).
+		Stdout(context.Background())
+	if err != nil {
+		err = fmt.Errorf("test failed: %w\n%s", err, stdout)
+	}
+	return err
+}
+
+func Lint() error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+
+	defer client.Close()
+	_, err = client.Container().
+		From("golangci/golangci-lint:v1.52-alpine").
+		WithMountedDirectory("/app", RepositoryGoCodeOnly(client)).
+		WithWorkdir("/app").
+		WithExec([]string{"golangci-lint", "run", "-v", "--timeout", "5m"}).
+		ExitCode(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func Dagger() error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer client.Close()
 
@@ -136,6 +171,7 @@ func Dagger() error {
 
 	integrationTest := baseContainer.
 		WithServiceBinding("status-dapr", status).
+		WithEnvVariable("STATUS_SERVICE_ADDR", "http://status-dapr:3500").
 		WithExec([]string{"go", "test", "-v", "status/cmd/integration_test.go"})
 
 	stdout, err := integrationTest.Stdout(context.Background())
