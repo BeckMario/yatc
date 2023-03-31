@@ -38,7 +38,8 @@ func (Generate) All() error {
 }
 
 func runDaprArgs(service string, appPort int, daprPort int) []string {
-	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort), "--dapr-http-port", strconv.Itoa(daprPort)}
+	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
+		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./components"}
 }
 
 func runDapr(service string, appPort int, daprPort int) error {
@@ -46,6 +47,12 @@ func runDapr(service string, appPort int, daprPort int) error {
 	args = append(args, runDaprArgs(service, appPort, daprPort)...)
 	args = append(args, []string{"--", "go", "run", service + "/cmd/main.go"}...)
 	return sh.RunWithV(nil, "dapr", args...)
+}
+
+// Media Run service with dapr sidecar
+func (Run) Media() error {
+	mg.Deps(mg.F(Generate.Service, "media", false))
+	return runDapr("media", 8083, 3503)
 }
 
 // Status Run service with dapr sidecar

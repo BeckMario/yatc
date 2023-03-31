@@ -2,22 +2,19 @@ package media
 
 import (
 	"encoding/json"
-	"fmt"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/go-chi/chi/v5"
-	"io"
+	"github.com/go-chi/render"
 	"net/http"
-	"os"
-	"path/filepath"
 	"yatc/internal"
 )
 
 type Api struct {
-	service *Service
+	service Service
 }
 
-func NewMediaApi() *Api {
-	return &Api{nil}
+func NewMediaApi(service Service) *Api {
+	return &Api{service}
 }
 
 func (api *Api) ConfigureRouter(router chi.Router) {
@@ -59,7 +56,9 @@ func NewMediaFromMediaUpload(upload *MediaUpload) (*Media, error) {
 }
 
 func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(10)
+	//TODO: Check somewhere the media format and allow only a subset e.g. .png, .jpg, .gif, .mp4, etc.
+
+	err := r.ParseMultipartForm(1_000_000) // 1Mb
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 	}
@@ -74,25 +73,18 @@ func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 	}
 
-	fmt.Println(media.metadata)
-
-	join := filepath.Join(".", media.fileName)
-	file, err := os.Create(join)
+	mediaId, err := api.service.UploadFile(media)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 	}
-	defer file.Close()
-
-	_, err = io.Copy(file, *media.reader)
-	if err != nil {
-		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
-	}
-	reader := *media.reader
-	reader.Close()
-	//api.service.UploadFile(media)
+	render.JSON(w, r, MediaUploadResponse{MediaId: mediaId})
 }
 
-func (api *Api) DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId openapi_types.UUID) {
-	//TODO implement me
-	panic("implement me")
+func (api *Api) DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId string) {
+	url, err := api.service.DownloadFile(mediaId)
+	if err != nil {
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+	}
+	w.Header().Add("Location", url)
+	w.WriteHeader(http.StatusSeeOther)
 }

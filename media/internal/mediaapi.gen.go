@@ -19,11 +19,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// MediaDownloadResponse defines model for MediaDownloadResponse.
-type MediaDownloadResponse struct {
-	Media openapi_types.File `json:"media"`
-}
-
 // MediaMetadata defines model for MediaMetadata.
 type MediaMetadata struct {
 	MediaFormat string `json:"mediaFormat"`
@@ -37,7 +32,7 @@ type MediaUpload struct {
 
 // MediaUploadResponse defines model for MediaUploadResponse.
 type MediaUploadResponse struct {
-	MediaId openapi_types.UUID `json:"mediaId"`
+	MediaId string `json:"mediaId"`
 }
 
 // UploadMediaMultipartRequestBody defines body for UploadMedia for multipart/form-data ContentType.
@@ -50,7 +45,7 @@ type ServerInterface interface {
 	UploadMedia(w http.ResponseWriter, r *http.Request)
 	// download a media by mediaId
 	// (GET /media/{mediaId})
-	DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId openapi_types.UUID)
+	DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -84,7 +79,7 @@ func (siw *ServerInterfaceWrapper) DownloadMedia(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "mediaId" -------------
-	var mediaId openapi_types.UUID
+	var mediaId string
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "mediaId", runtime.ParamLocationPath, chi.URLParam(r, "mediaId"), &mediaId)
 	if err != nil {
@@ -229,15 +224,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6RUTY/TPBD+K9G879G7KfSy8g2EkHpYCSFxQj1Mk2nrVWIbe7KoqvLf0dhJtild2oVb",
-	"mjzj52vqI1Su9c6S5Qj6CLHaU4vp8ZFqg5/cT9s4rL9S9M5Gkg8+OE+BDSVYKzB52LrQIoOGjbEYDqCA",
-	"D55AQ+Rg7A76XkGgH50JVIP+PgyuJ5jbPFHF0KvM/EiMNTK+wvh5YDvewjKAX+X65sXjv3hTGXsq+v9A",
-	"W9DwX/mScDnEW84dXtQ8fVXXksrqrzS0qmc+us7UtzW0qi8wC9LYrZMza4pVMJ6Ns6CzIjnZcEPj7+LD",
-	"lxUoeKYQM+qdiHeeLHoDGpb3i/slKPDI+yS5nJL3LqaWxRAKhxiBbHnkEs0U+aOrDwKtnGWyaartGjYe",
-	"A5fi/G6sJtdwU0nDavTzbDh0lF7kzJPm94vFGTt635gqqS6fohj/C+qp1yRhHnbsqopi3HZN0Y06FcSu",
-	"bWVJNeSXBRYpzmJzKMZKFTDu4snfUAZz6uVxAPWickcX4h9vhbEAjwFbYgpy4vlGyKoVbpupQfYGdGoa",
-	"FFhsZUleVM0jVidxXVvd9ZvqcBUT30UOhO0ba/ntSvxzMVNyZ93UwzE3tiOzFJ7HiLvQgIY9s9dl2bgK",
-	"m72LrB8WD0uQKIb54yxh6Nf9rwAAAP//fkkxBvEFAAA=",
+	"H4sIAAAAAAAC/5xSTYvbPBD+K2be96iu0/qy6NZSCjkslEJPJQfFGsdabEmVxltC8H8vI9ne2M3S0Jut",
+	"+Xi+5gK1672zaCmCvECsW+xV+nxCbdQTktKKFD/44DwGMpjKPZe/uNAr4l86ewQJkYKxJxhHAQF/Diag",
+	"Bvlj1XwQc7M7PmNNMIqM9d13Tuk3kPijmdDgaKwKZxBbVJF7r0n/H7ABCf+VrzrLSWS5VniT81KdVv+N",
+	"/TeM3tmIb6jY6zu92usbSNxpbON4h8ZYB+PJOAsyM2A/DHU4/xcfv+5BwAuGmLveM1nn0SpvQEL1sHuo",
+	"QIBX1CaK5eK0dzGlygIUYzBxyBJnLOaMkT45febW2llCm6b6oSPjVaCSE3s3R5FtvyuU6RTGtTcUBkwP",
+	"2ePE+cNut0FX3nemTqzL58jC/wF6yTFRWJsdh7rGGJuhK4aZp4A49D0fpYT8WKgi2Vkcz8UcqQBSp7iE",
+	"DAcezK6Xl6lpZJYnvGH/Z/fLXgfgVVA9EgbeuL0IowvXZGDgqwGZcgYBVvV8Iq+c1gaLK7O2h3rYmF/t",
+	"qj9vsXPZfManFgs90S6G0G2cWkr3ecWzGF5mwbxPQkvkZVkyate6SPJx91gBU53mLyvFMB7G3wEAAP//",
+	"oqUhNPUEAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

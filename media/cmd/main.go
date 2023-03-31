@@ -1,48 +1,49 @@
 package main
 
 import (
-	"context"
-	"errors"
+	dapr "github.com/dapr/go-sdk/client"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"github.com/ilyakaznacheev/cleanenv"
+	"go.uber.org/zap"
+	"strconv"
+	"yatc/internal"
 	media "yatc/media/internal"
 )
 
 func main() {
-	api := media.NewMediaApi()
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	var config internal.Config
+	err := cleanenv.ReadConfig("media/config/config.yaml", &config)
+
+	if err != nil {
+		description, _ := cleanenv.GetDescription(&config, nil)
+		logger.Info("Config usage" + description)
+		logger.Warn("couldn't read config, using env as fallback", zap.Error(err))
+		err := cleanenv.ReadEnv(&config)
+		if err != nil {
+			logger.Fatal("couldn't init config with config.yaml or env", zap.Error(err))
+		}
+	}
+
+	client, err := dapr.NewClientWithPort(config.Dapr.GrpcPort)
+	if err != nil {
+		logger.Fatal("cant connect to dapr sidecar", zap.Error(err))
+	}
+	defer client.Close()
+
+	service := media.NewMediaService(client)
+	api := media.NewMediaApi(service)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(internal.ZapLogger(logger))
 	r.Route("/", api.ConfigureRouter)
 
-	server := &http.Server{
-		Addr:    ":8083",
-		Handler: r,
+	port, err := strconv.Atoi(config.Port)
+	if err != nil {
+		logger.Fatal("port not a int", zap.String("port", config.Port))
 	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-		log.Println("Stopped serving new connections.")
-	}()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownRelease()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP shutdown error: %v", err)
-	}
-	log.Println("Graceful shutdown complete.")
+	server := internal.NewServer(logger, port, r)
+	server.StartAndWait()
 }

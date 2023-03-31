@@ -37,29 +37,16 @@ paths:
       parameters:
         - name: mediaId
           in: path
-          description: uuid of media
+          description: id of media
           required: true
           schema:
             type: string
-            format: uuid
       responses:
-        '200':
-          description: successful operation
-          content:
-            application/octet-stream:
-              schema:
-                $ref: '#/components/schemas/MediaDownloadResponse'
+        '303':
+          description: location of the download url
 
 components:
   schemas:
-    MediaDownloadResponse:
-      type: object
-      required:
-        - media
-      properties:
-        media:
-          type: string
-          format: binary
     MediaMetadata:
       type: object
       required:
@@ -85,4 +72,3 @@ components:
       properties:
         mediaId:
           type: string
-          format: uuid
