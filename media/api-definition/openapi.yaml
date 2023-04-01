@@ -47,21 +47,12 @@ paths:
 
 components:
   schemas:
-    MediaMetadata:
-      type: object
-      required:
-        - mediaFormat
-      properties:
-        mediaFormat:
-          type: string
     MediaUpload:
       type: object
       required:
         - mediaMetadata
         - media
       properties:
-        mediaMetadata:
-          $ref: '#/components/schemas/MediaMetadata'
         media:
           type: string
           format: binary

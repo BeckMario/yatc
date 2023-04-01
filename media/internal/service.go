@@ -12,13 +12,13 @@ import (
 )
 
 type Metadata struct {
-	Format string
+	Extension string
 }
 
 type Media struct {
 	metadata Metadata
 	fileName string
-	reader   *io.ReadCloser
+	reader   *io.Reader
 }
 
 type Service interface {
@@ -36,7 +36,7 @@ func NewMediaService(client client.Client) *MediaService {
 
 func (service *MediaService) UploadFile(media *Media) (string, error) {
 	mediaId := uuid.New()
-	key := fmt.Sprintf("%s.%s", mediaId, media.metadata.Format)
+	key := fmt.Sprintf("%s.%s", mediaId, media.metadata.Extension)
 
 	//TODO: Save file to temporary location and use invoke binding request with file path. so the file doesnt get fully read into memory
 	// -> shared volume for dapr sidecar and app needed

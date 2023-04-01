@@ -1,10 +1,12 @@
 package media
 
 import (
-	"encoding/json"
+	"bytes"
+	"fmt"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"io"
 	"net/http"
 	"yatc/internal"
 )
@@ -12,6 +14,10 @@ import (
 type Api struct {
 	service Service
 }
+
+var (
+	allowedContentTypes = []string{"image/gif", "image/jpeg", "image/png", "video/mp4"}
+)
 
 func NewMediaApi(service Service) *Api {
 	return &Api{service}
@@ -27,13 +33,6 @@ func (api *Api) ConfigureRouter(router chi.Router) {
 }
 
 func NewMediaUpload(r *http.Request) (*MediaUpload, error) {
-	metadataJson := r.FormValue("mediaMetadata")
-	var mediaMetadata MediaMetadata
-	err := json.Unmarshal([]byte(metadataJson), &mediaMetadata)
-	if err != nil {
-		return nil, err
-	}
-
 	var media openapi_types.File
 	_, header, err := r.FormFile("media")
 	if err != nil {
@@ -41,49 +40,80 @@ func NewMediaUpload(r *http.Request) (*MediaUpload, error) {
 	}
 
 	media.InitFromMultipart(header)
-	return &MediaUpload{media, mediaMetadata}, nil
-}
-
-func NewMediaFromMediaUpload(upload *MediaUpload) (*Media, error) {
-	reader, err := upload.Media.Reader()
-	if err != nil {
-		return nil, err
-	}
-
-	metadata := Metadata{Format: upload.MediaMetadata.MediaFormat}
-
-	return &Media{metadata, upload.Media.Filename(), &reader}, nil
+	return &MediaUpload{media}, nil
 }
 
 func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	//TODO: Check somewhere the media format and allow only a subset e.g. .png, .jpg, .gif, .mp4, etc.
-
 	err := r.ParseMultipartForm(1_000_000) // 1Mb
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusBadRequest)
+		return
 	}
 
 	mediaUpload, err := NewMediaUpload(r)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusBadRequest)
+		return
 	}
 
-	media, err := NewMediaFromMediaUpload(mediaUpload)
+	reader, err := mediaUpload.Media.Reader()
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	contentType, err := getContentType(internal.Ptr(io.Reader(reader)))
+	if err != nil {
+		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if !isContentTypeAllowed(contentType) {
+		internal.ReplyWithError(w, r, fmt.Errorf("content type not allowed: %s", contentType), http.StatusBadRequest)
+		return
+	}
+
+	media := &Media{
+		metadata: Metadata{},
+		fileName: mediaUpload.Media.Filename(),
+		reader:   internal.Ptr(io.Reader(reader)),
 	}
 
 	mediaId, err := api.service.UploadFile(media)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		return
 	}
+
 	render.JSON(w, r, MediaUploadResponse{MediaId: mediaId})
+}
+
+func getContentType(reader *io.Reader) (string, error) {
+	mimeSniff := make([]byte, 512)
+	mimeSniffReader := io.LimitReader(*reader, 512)
+	mimeSniff, err := io.ReadAll(mimeSniffReader)
+	if err != nil {
+		return "", err
+	}
+	newReader := io.MultiReader(bytes.NewReader(mimeSniff), *reader)
+	reader = &newReader
+	return http.DetectContentType(mimeSniff), nil
+}
+
+func isContentTypeAllowed(contentType string) bool {
+	for _, allowedContentType := range allowedContentTypes {
+		if contentType == allowedContentType {
+			return true
+		}
+	}
+	return false
 }
 
 func (api *Api) DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId string) {
 	url, err := api.service.DownloadFile(mediaId)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
+		return
 	}
 	w.Header().Add("Location", url)
 	w.WriteHeader(http.StatusSeeOther)

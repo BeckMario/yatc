@@ -19,15 +19,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// MediaMetadata defines model for MediaMetadata.
-type MediaMetadata struct {
-	MediaFormat string `json:"mediaFormat"`
-}
-
 // MediaUpload defines model for MediaUpload.
 type MediaUpload struct {
-	Media         openapi_types.File `json:"media"`
-	MediaMetadata MediaMetadata      `json:"mediaMetadata"`
+	Media openapi_types.File `json:"media"`
 }
 
 // MediaUploadResponse defines model for MediaUploadResponse.
@@ -224,15 +218,14 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/5xSTYvbPBD+K2be96iu0/qy6NZSCjkslEJPJQfFGsdabEmVxltC8H8vI9ne2M3S0Jut",
-	"+Xi+5gK1672zaCmCvECsW+xV+nxCbdQTktKKFD/44DwGMpjKPZe/uNAr4l86ewQJkYKxJxhHAQF/Diag",
-	"Bvlj1XwQc7M7PmNNMIqM9d13Tuk3kPijmdDgaKwKZxBbVJF7r0n/H7ABCf+VrzrLSWS5VniT81KdVv+N",
-	"/TeM3tmIb6jY6zu92usbSNxpbON4h8ZYB+PJOAsyM2A/DHU4/xcfv+5BwAuGmLveM1nn0SpvQEL1sHuo",
-	"QIBX1CaK5eK0dzGlygIUYzBxyBJnLOaMkT45febW2llCm6b6oSPjVaCSE3s3R5FtvyuU6RTGtTcUBkwP",
-	"2ePE+cNut0FX3nemTqzL58jC/wF6yTFRWJsdh7rGGJuhK4aZp4A49D0fpYT8WKgi2Vkcz8UcqQBSp7iE",
-	"DAcezK6Xl6lpZJYnvGH/Z/fLXgfgVVA9EgbeuL0IowvXZGDgqwGZcgYBVvV8Iq+c1gaLK7O2h3rYmF/t",
-	"qj9vsXPZfManFgs90S6G0G2cWkr3ecWzGF5mwbxPQkvkZVkyate6SPJx91gBU53mLyvFMB7G3wEAAP//",
-	"oqUhNPUEAAA=",
+	"H4sIAAAAAAAC/5ySQW/UMBCF/0o0cDRNIJfKNxCXHiohJE5oD7PJZOMqsY09KVqt8t/R2Em6G4pUcYpj",
+	"e/zefG8u0LjRO0uWI+gLxKanEdPykVqDP/zgsJVfH5ynwIbS4SiHsuhcGJFBw9FYDGdQwGdPoCFyMPYE",
+	"86wg0K/JBGpB/8yFj8TYIiOo5aHDVuaOT9QwzOpa/ztF72ykf/h4SAbfoPvQvqIkN43tnLzRUmyC8Wyc",
+	"BZ0dSEeGB1r/i8/fHkDBM4WYb30Us86TRW9AQ31X3dWgwCP3yWK5sfIusnylARQNMQ65xVVLPFPkL649",
+	"y9XGWSabqsZpYOMxcCnMPyR+W2Kyeh+oAw3vypdIyyXP8jrM+ZYNh4nSRmacPH+qqp06ej+YJrkun6I0",
+	"/h/SW47Jwi3sODUNxdhNQzGtPhXEaRxlrDTkzQKLhLM4nos1UgWMp7iFDAcpzNTLy3JpFpcnegX/V/fb",
+	"XgfgMeBITEFe3E+EaQvXZWGQqQGdcgYFFkcZkRdPt4DVFaz9oB528Ouq/nsWB5fhiz73VLSL7WIKw47U",
+	"dvQ2VlJL4XltWN7T0DN7XZaiOvQusr6v7msQq0v95aZjmA/znwAAAP//Wbv0HUsEAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
