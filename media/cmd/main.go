@@ -12,6 +12,7 @@ import (
 
 func main() {
 	logger, _ := zap.NewDevelopment()
+	zap.ReplaceGlobals(logger)
 	defer func(logger *zap.Logger) {
 		_ = logger.Sync()
 	}(logger)
