@@ -24,7 +24,8 @@ type oapiConfig struct {
 }
 
 func oapiCodeGenBase(client *dagger.Client) *dagger.Container {
-	return goBase(client).
+	return client.Container().
+		From("golang:alpine3.17").
 		WithExec([]string{"go", "install", "github.com/deepmap/oapi-codegen/cmd/oapi-codegen@master"}).
 		WithMountedDirectory("/app", Repository(client))
 }
