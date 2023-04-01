@@ -15,6 +15,7 @@ import (
 
 type Run mg.Namespace
 type Generate mg.Namespace
+type Build mg.Namespace
 
 func runDaprArgs(service string, appPort int, daprPort int) []string {
 	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
@@ -55,7 +56,39 @@ func (Run) Timeline() error {
 
 // All Run all services
 func (Run) All() {
-	mg.Deps(Run.User, Run.Status, Run.Timeline)
+	mg.Deps(Run.User, Run.Status, Run.Timeline, Run.Media)
+}
+
+func (b Build) Service(name string) error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	file := goBase(client).WithExec([]string{"go", "build", "-o", fmt.Sprintf("build/%s_service", name), fmt.Sprintf("yatc/%s/cmd", name)}).
+		File(fmt.Sprintf("build/%s_service", name))
+
+	_, err = client.Container().
+		WithFile("/app", file).
+		WithEntrypoint([]string{"/app"}).
+		Publish(context.Background(), fmt.Sprintf("reg.technicalonions.de/%s-service:latest", name))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b Build) All() error {
+	services := []string{"status", "timeline", "media", "user"}
+	for _, service := range services {
+		err := b.Service(service)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func UnitTest() error {
