@@ -22,7 +22,11 @@ func main() {
 	if err != nil {
 		description, _ := cleanenv.GetDescription(&config, nil)
 		logger.Info("Config usage" + description)
-		logger.Fatal("couldn't read config", zap.Error(err))
+		logger.Warn("couldn't read config, using env as fallback", zap.Error(err))
+		err := cleanenv.ReadEnv(&config)
+		if err != nil {
+			logger.Fatal("couldn't init config with config.yaml or env", zap.Error(err))
+		}
 	}
 
 	repo := timelines.NewInMemoryRepo()
