@@ -1,1 +1,5 @@
 port: "8083"
+dapr:
+  grpc-port: "50001"
+  s3-binding:
+    name: "s3"

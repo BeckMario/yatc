@@ -13,13 +13,18 @@ type DaprConfig struct {
 		Timeline string `yaml:"timeline" env:"DAPR_TIMELINE_APP_ID" env-default:"timeline-service"`
 		Media    string `yaml:"media" env:"DAPR_MEDIA_APP_ID" env-default:"media-service"`
 	} `yaml:"app-ids"`
-	Host     string       `yaml:"host" env:"DAPR_HOST" env-default:"http://localhost"`
-	HttpPort string       `yaml:"http-port" env:"DAPR_HTTP_PORT" env-default:"3500"`
-	GrpcPort string       `yaml:"grpc-port" env:"DAPR_GRPC_PORT" env-default:"50001"`
-	PubSub   PubSubConfig `yaml:"pubsub"`
+	Host     string          `yaml:"host" env:"DAPR_HOST" env-default:"http://localhost"`
+	HttpPort string          `yaml:"http-port" env:"DAPR_HTTP_PORT" env-default:"3500"`
+	GrpcPort string          `yaml:"grpc-port" env:"DAPR_GRPC_PORT" env-default:"50001"`
+	PubSub   PubSubConfig    `yaml:"pubsub"`
+	S3       S3BindingConfig `yaml:"s3-binding"`
 }
 
 type PubSubConfig struct {
 	Name  string `yaml:"name" env:"DAPR_PUBSUB_NAME" env-default:"pubsub"`
 	Topic string `yaml:"topic" env:"DAPR_TOPIC_NAME"`
+}
+
+type S3BindingConfig struct {
+	Name string `yaml:"name" env:"DAPR_S3_BINDING_NAME" env-default:"s3"`
 }

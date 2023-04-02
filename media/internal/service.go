@@ -2,11 +2,8 @@ package media
 
 import (
 	"bufio"
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"github.com/dapr/go-sdk/client"
 	"github.com/google/uuid"
 	"io"
 )
@@ -27,11 +24,11 @@ type Service interface {
 }
 
 type MediaService struct {
-	client client.Client
+	s3 S3
 }
 
-func NewMediaService(client client.Client) *MediaService {
-	return &MediaService{client}
+func NewMediaService(s3 S3) *MediaService {
+	return &MediaService{s3}
 }
 
 func (service *MediaService) UploadFile(media *Media) (string, error) {
@@ -48,41 +45,14 @@ func (service *MediaService) UploadFile(media *Media) (string, error) {
 	b64String := base64.StdEncoding.EncodeToString(mediaBytes)
 	data := []byte(b64String)
 
-	invokeBindingRequest := client.InvokeBindingRequest{
-		Name:      "s3",
-		Operation: "create",
-		Data:      data,
-		Metadata:  map[string]string{"key": key},
-	}
-
-	err = service.client.InvokeOutputBinding(context.Background(), &invokeBindingRequest)
+	err = service.s3.Create(data, key)
 	if err != nil {
 		return "", err
 	}
+
 	return key, nil
 }
 
 func (service *MediaService) DownloadFile(mediaId string) (string, error) {
-	invokeBindingRequest := client.InvokeBindingRequest{
-		Name:      "s3",
-		Operation: "presign",
-		Data:      nil,
-		Metadata:  map[string]string{"key": mediaId, "presignTTL": "5m"},
-	}
-
-	response, err := service.client.InvokeBinding(context.Background(), &invokeBindingRequest)
-	if err != nil {
-		return "", err
-	}
-
-	data := struct {
-		PresignURL string
-	}{}
-
-	err = json.Unmarshal(response.Data, &data)
-	if err != nil {
-		return "", err
-	}
-
-	return data.PresignURL, nil
+	return service.s3.Presign("5m", mediaId)
 }

@@ -1,1 +1,3 @@
 port: "8080"
+dapr:
+  HttpPort: "3501"

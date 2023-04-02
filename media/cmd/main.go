@@ -36,7 +36,8 @@ func main() {
 	}
 	defer client.Close()
 
-	service := media.NewMediaService(client)
+	s3 := media.NewDaprS3(client, config.Dapr.S3)
+	service := media.NewMediaService(s3)
 	api := media.NewMediaApi(service)
 
 	r := chi.NewRouter()
