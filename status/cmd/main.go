@@ -6,7 +6,12 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.uber.org/zap"
+	"log"
 	"strconv"
 	"yatc/internal"
 	statuses "yatc/status/internal"
@@ -56,6 +61,19 @@ func main() {
 		logger.Fatal("cant apply default scheme to database", zap.Error(err))
 	}
 
+	exporter, err := prometheus.New()
+	if err != nil {
+		return
+	}
+	provider := metric.NewMeterProvider(metric.WithReader(exporter))
+	meter := provider.Meter("")
+
+	histogram, err := meter.Float64Histogram("request_duration_seconds", instrument.WithDescription("Time (in seconds) spent serving HTTP requests."))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	redMetric := internal.NewREDMetric(histogram)
 	publisher := statuses.NewDaprStatusPublisher(client, config.Dapr.PubSub)
 	//repo := statuses.NewInMemoryRepo()
 	repo := statuses.NewPostgresRepo(db)
@@ -64,7 +82,10 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(internal.ZapLogger(logger))
+	r.Use(redMetric.Middleware())
+
 	r.Route("/", api.ConfigureRouter)
+	r.Handle("/metrics", promhttp.Handler())
 
 	port, err := strconv.Atoi(config.Port)
 	if err != nil {
