@@ -64,9 +64,8 @@ func (sub *DaprStatusSubscriber) Subscribe(handler func(ctx context.Context, sta
 
 		ctx := context.Background()
 		if trace != "" {
-			ctx = context.WithValue(ctx, "Traceparent", trace)
+			ctx = context.WithValue(ctx, internal.ContextKeyTraceParent, trace)
 		}
-
 		cloudEvent := &StatusCloudEvent{}
 		var bodyBytes []byte
 		bodyBytes, _ = io.ReadAll(r.Body)

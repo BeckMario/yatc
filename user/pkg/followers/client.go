@@ -20,7 +20,7 @@ func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
 	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
 
 	traceRequestFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		value := ctx.Value("Traceparent")
+		value := ctx.Value(internal.ContextKeyTraceParent)
 		if value != nil {
 			trace, ok := value.(string)
 			if ok {

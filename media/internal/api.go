@@ -62,7 +62,7 @@ func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contentType, err := getContentType(internal.Ptr(io.Reader(reader)))
+	reader, contentType, err := getContentType(io.Reader(reader))
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return
@@ -76,7 +76,7 @@ func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	media := &Media{
 		metadata: Metadata{},
 		fileName: mediaUpload.Media.Filename(),
-		reader:   internal.Ptr(io.Reader(reader)),
+		reader:   io.Reader(reader),
 	}
 
 	mediaId, err := api.service.UploadFile(media)
@@ -88,16 +88,14 @@ func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, MediaUploadResponse{MediaId: mediaId})
 }
 
-func getContentType(reader *io.Reader) (string, error) {
-	mimeSniff := make([]byte, 512)
-	mimeSniffReader := io.LimitReader(*reader, 512)
+func getContentType(reader io.Reader) (io.ReadCloser, string, error) {
+	mimeSniffReader := io.LimitReader(reader, 512)
 	mimeSniff, err := io.ReadAll(mimeSniffReader)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
-	newReader := io.MultiReader(bytes.NewReader(mimeSniff), *reader)
-	reader = &newReader
-	return http.DetectContentType(mimeSniff), nil
+	return io.NopCloser(io.MultiReader(bytes.NewReader(mimeSniff), reader)),
+		http.DetectContentType(mimeSniff), nil
 }
 
 func isContentTypeAllowed(contentType string) bool {

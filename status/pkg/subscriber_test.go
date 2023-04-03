@@ -2,6 +2,7 @@ package statuses
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -79,7 +80,7 @@ func TestDaprStatusSubscriber_Subscribe(t *testing.T) {
 		UserId:  uuid.New(),
 	}
 	handlerCalled := false
-	mockHandler := func(status Status) {
+	mockHandler := func(ctx context.Context, status Status) {
 		if assert.Equal(t, expectedStatus, status) {
 			handlerCalled = true
 		}

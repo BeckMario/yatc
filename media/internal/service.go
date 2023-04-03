@@ -15,7 +15,7 @@ type Metadata struct {
 type Media struct {
 	metadata Metadata
 	fileName string
-	reader   *io.Reader
+	reader   io.Reader
 }
 
 type Service interface {
@@ -37,7 +37,7 @@ func (service *MediaService) UploadFile(media *Media) (string, error) {
 
 	//TODO: Save file to temporary location and use invoke binding request with file path. so the file doesnt get fully read into memory
 	// -> shared volume for dapr sidecar and app needed
-	reader := bufio.NewReader(*media.reader)
+	reader := bufio.NewReader(media.reader)
 	mediaBytes, err := io.ReadAll(reader)
 	if err != nil {
 		return "", err
