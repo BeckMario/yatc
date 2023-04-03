@@ -18,10 +18,24 @@ type FollowerClient struct {
 func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
 	//TODO: Could use NewClientWithResponses
 	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
-	httpClient, _ := api.NewClient(server, api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+
+	traceRequestFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		value := ctx.Value("Traceparent")
+		if value != nil {
+			trace, ok := value.(string)
+			if ok {
+				req.Header.Add("Traceparent", trace)
+			}
+		}
+		return nil
+	})
+
+	daprHeaderFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("dapr-app-id", config.AppIds.User)
 		return nil
-	}))
+	})
+
+	httpClient, _ := api.NewClient(server, traceRequestFn, daprHeaderFn)
 
 	return &FollowerClient{httpClient}
 }
@@ -51,8 +65,8 @@ func ToClientError(response *http.Response, err error) *internal.ClientError {
 	return nil
 }
 
-func (client *FollowerClient) GetFollowers(userId uuid.UUID) ([]users.User, error) {
-	response, err := client.httpClient.GetFollowers(context.Background(), userId)
+func (client *FollowerClient) GetFollowers(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
+	response, err := client.httpClient.GetFollowers(ctx, userId)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return nil, clientError
@@ -65,8 +79,8 @@ func (client *FollowerClient) GetFollowers(userId uuid.UUID) ([]users.User, erro
 	return allUsers, nil
 }
 
-func (client *FollowerClient) GetFollowees(userId uuid.UUID) ([]users.User, error) {
-	response, err := client.httpClient.GetFollowees(context.Background(), userId)
+func (client *FollowerClient) GetFollowees(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
+	response, err := client.httpClient.GetFollowees(ctx, userId)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return nil, clientError
@@ -80,9 +94,9 @@ func (client *FollowerClient) GetFollowees(userId uuid.UUID) ([]users.User, erro
 	return allUsers, nil
 }
 
-func (client *FollowerClient) FollowUser(userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) (users.User, error) {
+func (client *FollowerClient) FollowUser(ctx context.Context, userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) (users.User, error) {
 	body := api.FollowUserJSONRequestBody{Id: userWhichFollowsId}
-	response, err := client.httpClient.FollowUser(context.Background(), userToFollowId, body)
+	response, err := client.httpClient.FollowUser(ctx, userToFollowId, body)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return users.User{}, clientError
@@ -95,8 +109,8 @@ func (client *FollowerClient) FollowUser(userToFollowId uuid.UUID, userWhichFoll
 	return user, nil
 }
 
-func (client *FollowerClient) UnfollowUser(userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) error {
-	response, err := client.httpClient.UnfollowUser(context.Background(), userToFollowId, userWhichFollowsId)
+func (client *FollowerClient) UnfollowUser(ctx context.Context, userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) error {
+	response, err := client.httpClient.UnfollowUser(ctx, userToFollowId, userWhichFollowsId)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return clientError

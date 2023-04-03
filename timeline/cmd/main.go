@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
@@ -40,8 +41,8 @@ func main() {
 	r.Route("/", api.ConfigureRouter)
 
 	subscriber := statuses.NewDaprStatusSubscriber(r, logger, config.Dapr.PubSub)
-	subscriber.Subscribe(func(status statuses.Status) {
-		err := service.UpdateTimelines(status.UserId, status)
+	subscriber.Subscribe(func(ctx context.Context, status statuses.Status) {
+		err := service.UpdateTimelines(ctx, status.UserId, status)
 		if err != nil {
 			logger.Error("updateing timelines", zap.Error(err), zap.Any("status", status))
 		}

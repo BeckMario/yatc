@@ -1,6 +1,7 @@
 package timelines
 
 import (
+	"context"
 	"errors"
 	"github.com/google/uuid"
 	"yatc/internal"
@@ -22,8 +23,8 @@ func (timelineService *Service) GetTimeline(userId uuid.UUID) (timelines.Timelin
 	return timelineService.repo.Get(userId)
 }
 
-func (timelineService *Service) UpdateTimelines(userId uuid.UUID, status statuses.Status) error {
-	allFollowers, err := timelineService.followerService.GetFollowers(userId)
+func (timelineService *Service) UpdateTimelines(ctx context.Context, userId uuid.UUID, status statuses.Status) error {
+	allFollowers, err := timelineService.followerService.GetFollowers(ctx, userId)
 	if err != nil {
 		return err
 	}

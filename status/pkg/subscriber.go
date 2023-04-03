@@ -1,6 +1,7 @@
 package statuses
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -16,7 +17,7 @@ const (
 )
 
 type Subscriber interface {
-	Subscribe(handler func(status Status)) error
+	Subscribe(context context.Context, handler func(status Status)) error
 }
 
 type StatusCloudEvent struct {
@@ -57,8 +58,15 @@ func NewDaprStatusSubscriber(router chi.Router, logger *zap.Logger, config inter
 }
 
 // Subscribe Currently there can only be one subscribe handler
-func (sub *DaprStatusSubscriber) Subscribe(handler func(status Status)) {
+func (sub *DaprStatusSubscriber) Subscribe(handler func(ctx context.Context, status Status)) {
 	sub.router.Post(sub.route, func(w http.ResponseWriter, r *http.Request) {
+		trace := r.Header.Get("Traceparent")
+
+		ctx := context.Background()
+		if trace != "" {
+			ctx = context.WithValue(ctx, "Traceparent", trace)
+		}
+
 		cloudEvent := &StatusCloudEvent{}
 		var bodyBytes []byte
 		bodyBytes, _ = io.ReadAll(r.Body)
@@ -67,7 +75,7 @@ func (sub *DaprStatusSubscriber) Subscribe(handler func(status Status)) {
 			// Shouldn't normally happen when using dapr to publish and subscribe
 			sub.logger.DPanic("message not a cloudevent", zap.Error(err))
 		}
-		handler(cloudEvent.Status)
+		handler(ctx, cloudEvent.Status)
 		render.Status(r, http.StatusOK)
 	})
 }

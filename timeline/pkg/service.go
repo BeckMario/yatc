@@ -1,6 +1,7 @@
 package timelines
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"yatc/status/pkg"
 )
@@ -12,5 +13,5 @@ type Timeline struct {
 
 type Service interface {
 	GetTimeline(userId uuid.UUID) (Timeline, error)
-	UpdateTimelines(userId uuid.UUID, status statuses.Status) error
+	UpdateTimelines(ctx context.Context, userId uuid.UUID, status statuses.Status) error
 }

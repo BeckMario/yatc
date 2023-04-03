@@ -1,6 +1,7 @@
 package followers
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"yatc/internal"
@@ -8,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"yatc/user/pkg/users"
 )
+
+var ctx = context.Background()
 
 type mockRepo struct {
 	users map[uuid.UUID]users.User
@@ -81,7 +84,7 @@ func TestService_GetFollowers(t *testing.T) {
 
 	service := NewFollowerService(mockRepo)
 
-	followers, err := service.GetFollowers(mockUsers[0].Id)
+	followers, err := service.GetFollowers(ctx, mockUsers[0].Id)
 	assert.NoError(t, err)
 
 	assert.Len(t, followers, 2, "expected 2 followers, got %d", len(followers))
@@ -123,7 +126,7 @@ func TestService_GetFollowees(t *testing.T) {
 
 	service := NewFollowerService(mockRepo)
 
-	followers, err := service.GetFollowees(mockUsers[0].Id)
+	followers, err := service.GetFollowees(ctx, mockUsers[0].Id)
 	assert.NoError(t, err)
 
 	assert.Len(t, followers, 2, "expected 2 followees, got %d", len(followers))

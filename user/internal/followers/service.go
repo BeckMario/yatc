@@ -1,6 +1,7 @@
 package followers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func NewFollowerService(repo iusers.Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (service *Service) GetFollowers(userId uuid.UUID) ([]users.User, error) {
+func (service *Service) GetFollowers(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
 	user, err := service.repo.Get(userId)
 	if err != nil {
 		return nil, err
@@ -40,7 +41,7 @@ func (service *Service) GetFollowers(userId uuid.UUID) ([]users.User, error) {
 	return followers, err
 }
 
-func (service *Service) GetFollowees(userId uuid.UUID) ([]users.User, error) {
+func (service *Service) GetFollowees(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
 	user, err := service.repo.Get(userId)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (service *Service) GetFollowees(userId uuid.UUID) ([]users.User, error) {
 	return followees, err
 }
 
-func (service *Service) FollowUser(userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) (users.User, error) {
+func (service *Service) FollowUser(ctx context.Context, userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) (users.User, error) {
 	if userWhichFollowsId == userToFollowId {
 		return users.User{}, SelfFollowError
 	}
@@ -93,7 +94,7 @@ func (service *Service) FollowUser(userToFollowId uuid.UUID, userWhichFollowsId 
 	return userToFollow, nil
 }
 
-func (service *Service) UnfollowUser(userToUnfollowId uuid.UUID, userWhichUnfollowsId uuid.UUID) error {
+func (service *Service) UnfollowUser(ctx context.Context, userToUnfollowId uuid.UUID, userWhichUnfollowsId uuid.UUID) error {
 	if userWhichUnfollowsId == userToUnfollowId {
 		return SelfFollowError
 	}

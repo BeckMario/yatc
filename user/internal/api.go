@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -83,7 +84,7 @@ func (api *UserApi) GetUser(w http.ResponseWriter, r *http.Request, userId uuid.
 }
 
 func (api *UserApi) GetFollowees(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
-	allUsers, err := api.followerService.GetFollowees(userId)
+	allUsers, err := api.followerService.GetFollowees(context.Background(), userId)
 	if err != nil {
 		if errors.Is(err, internal.NotFoundError(userId)) {
 			internal.ReplyWithError(w, r, err, http.StatusNotFound)
@@ -102,7 +103,7 @@ func (api *UserApi) GetFollowees(w http.ResponseWriter, r *http.Request, userId 
 }
 
 func (api *UserApi) GetFollowers(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
-	allUsers, err := api.followerService.GetFollowers(userId)
+	allUsers, err := api.followerService.GetFollowers(context.Background(), userId)
 	if err != nil {
 		if errors.Is(err, internal.NotFoundError(userId)) {
 			internal.ReplyWithError(w, r, err, http.StatusNotFound)
@@ -128,7 +129,7 @@ func (api *UserApi) FollowUser(w http.ResponseWriter, r *http.Request, userId uu
 		return
 	}
 
-	user, err := api.followerService.FollowUser(userId, createFollowerRequest.Id)
+	user, err := api.followerService.FollowUser(context.Background(), userId, createFollowerRequest.Id)
 	if err != nil {
 		if errors.Is(err, ifollowers.SelfFollowError) {
 			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
@@ -142,7 +143,7 @@ func (api *UserApi) FollowUser(w http.ResponseWriter, r *http.Request, userId uu
 }
 
 func (api *UserApi) UnfollowUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID, followerUserId uuid.UUID) {
-	err := api.followerService.UnfollowUser(userId, followerUserId)
+	err := api.followerService.UnfollowUser(context.Background(), userId, followerUserId)
 	if err != nil {
 		if errors.Is(err, ifollowers.SelfFollowError) {
 			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
