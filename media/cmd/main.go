@@ -2,8 +2,6 @@ package main
 
 import (
 	dapr "github.com/dapr/go-sdk/client"
-	"github.com/go-chi/chi/v5"
-	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
 	"strconv"
 	"yatc/internal"
@@ -17,18 +15,7 @@ func main() {
 		_ = logger.Sync()
 	}(logger)
 
-	var config internal.Config
-	err := cleanenv.ReadConfig("media/config/config.yaml", &config)
-
-	if err != nil {
-		description, _ := cleanenv.GetDescription(&config, nil)
-		logger.Info("Config usage" + description)
-		logger.Warn("couldn't read config, using env as fallback", zap.Error(err))
-		err := cleanenv.ReadEnv(&config)
-		if err != nil {
-			logger.Fatal("couldn't init config with config.yaml or env", zap.Error(err))
-		}
-	}
+	config := internal.NewConfig("media/config/config.yaml", logger)
 
 	client, err := dapr.NewClientWithPort(config.Dapr.GrpcPort)
 	if err != nil {
@@ -40,14 +27,13 @@ func main() {
 	service := media.NewMediaService(s3)
 	api := media.NewMediaApi(service)
 
-	r := chi.NewRouter()
-	r.Use(internal.ZapLogger(logger))
-	r.Route("/", api.ConfigureRouter)
-
 	port, err := strconv.Atoi(config.Port)
 	if err != nil {
 		logger.Fatal("port not a int", zap.String("port", config.Port))
 	}
-	server := internal.NewServer(logger, port, r)
+
+	server := internal.NewServer(logger, port)
+	server.Router.Route("/", api.ConfigureRouter)
+
 	server.StartAndWait()
 }
