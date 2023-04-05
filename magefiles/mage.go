@@ -7,57 +7,11 @@ import (
 	"dagger.io/dagger"
 	"fmt"
 	"github.com/magefile/mage/mg"
-	"github.com/magefile/mage/sh"
 	"os"
-	"strconv"
 	"time"
 )
 
-type Run mg.Namespace
-type Generate mg.Namespace
 type Build mg.Namespace
-
-func runDaprArgs(service string, appPort int, daprPort int) []string {
-	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
-		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./components"}
-}
-
-func runDapr(service string, appPort int, daprPort int) error {
-	args := []string{"run"}
-	args = append(args, runDaprArgs(service, appPort, daprPort)...)
-	args = append(args, []string{"--", "go", "run", service + "/cmd/main.go"}...)
-	return sh.RunWithV(nil, "dapr", args...)
-}
-
-// Media Run service with dapr sidecar
-func (Run) Media() error {
-	mg.Deps(mg.F(Generate.Service, "media", false))
-	return runDapr("media", 8083, 3503)
-}
-
-// Status Run service with dapr sidecar
-func (Run) Status() error {
-	mg.Deps(mg.F(Generate.Service, "status", false))
-	return runDapr("status", 8082, 3500)
-}
-
-// User Run service with dapr sidecar
-func (Run) User() error {
-	mg.Deps(mg.F(Generate.Service, "user", true))
-	return runDapr("user", 8080, 3502)
-
-}
-
-// Timeline Run service with dapr sidecar
-func (Run) Timeline() error {
-	mg.Deps(mg.F(Generate.Service, "timeline", false))
-	return runDapr("timeline", 8081, 3501)
-}
-
-// All Run all services
-func (Run) All() {
-	mg.Deps(Run.User, Run.Status, Run.Timeline, Run.Media)
-}
 
 func (b Build) Service(name string) error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
@@ -91,22 +45,6 @@ func (b Build) All() error {
 	return nil
 }
 
-func UnitTest() error {
-	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	stdout, err := goBase(client).
-		WithExec([]string{"go", "test", "-v", "./..."}).
-		Stdout(context.Background())
-	if err != nil {
-		err = fmt.Errorf("test failed: %w\n%s", err, stdout)
-	}
-	return err
-}
-
 func Lint() error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
@@ -126,7 +64,49 @@ func Lint() error {
 	return nil
 }
 
-func Dagger() error {
+func UnitTest() error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	stdout, err := goBase(client).
+		WithExec([]string{"go", "test", "-v", "./..."}).
+		Stdout(context.Background())
+	if err != nil {
+		err = fmt.Errorf("test failed: %w\n%s", err, stdout)
+	}
+	return err
+}
+
+func StatusIntegrationTest() error {
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// Postgres
+	postgres := client.Container().
+		From("postgres").
+		WithEnvVariable("POSTGRES_PASSWORD", "password").
+		WithExposedPort(5432).
+		WithExec(nil)
+
+	stdout, err := goBase(client).
+		WithServiceBinding("db", postgres).
+		WithEnvVariable("DATABASE_CONNECTION_STRING", "postgres://postgres:password@db:5432/postgres?sslmode=disable").
+		WithExec([]string{"go", "test", "-v", "status/internal/postgresrepo_test.go", "status/internal/repository.go"}).
+		Stdout(context.Background())
+
+	if err != nil {
+		err = fmt.Errorf("test failed: %w\n%s", err, stdout)
+	}
+	return err
+}
+
+func StatusComponentTest() error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
 		return err

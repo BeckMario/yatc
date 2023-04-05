@@ -11,6 +11,8 @@ import (
 	"yatc/internal"
 )
 
+type Generate mg.Namespace
+
 type oapiGenPaths struct {
 	dir              string
 	oapiServerConfig string

@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	dagger.io/dagger v0.5.2
+	github.com/DATA-DOG/go-txdb v0.1.6
 	github.com/dapr/go-sdk v1.7.0
 	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/felixge/httpsnoop v1.0.3
