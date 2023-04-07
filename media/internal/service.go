@@ -1,11 +1,12 @@
 package media
 
 import (
-	"bufio"
 	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
 	"io"
+	"os"
+	"path/filepath"
 )
 
 type Metadata struct {
@@ -24,28 +25,50 @@ type Service interface {
 }
 
 type MediaService struct {
-	s3 S3
+	s3        S3
+	publisher Publisher
 }
 
-func NewMediaService(s3 S3) *MediaService {
-	return &MediaService{s3}
+func NewMediaService(s3 S3, publisher Publisher) *MediaService {
+	return &MediaService{s3, publisher}
 }
 
 func (service *MediaService) UploadFile(media *Media) (string, error) {
 	mediaId := uuid.New()
 	key := fmt.Sprintf("%s.%s", mediaId, media.metadata.Extension)
 
-	//TODO: Save file to temporary location and use invoke binding request with file path. so the file doesnt get fully read into memory
-	// -> shared volume for dapr sidecar and app needed
-	reader := bufio.NewReader(media.reader)
-	mediaBytes, err := io.ReadAll(reader)
+	file, err := os.Create(fmt.Sprintf("tmp-%s", mediaId.String()))
 	if err != nil {
 		return "", err
 	}
-	b64String := base64.StdEncoding.EncodeToString(mediaBytes)
-	data := []byte(b64String)
+	encoder := base64.NewEncoder(base64.StdEncoding, file)
 
-	err = service.s3.Create(data, key)
+	_, err = io.Copy(encoder, media.reader)
+	if err != nil {
+		return "", err
+	}
+
+	err = encoder.Close()
+	if err != nil {
+		return "", err
+	}
+
+	abs, err := filepath.Abs(file.Name())
+	if err != nil {
+		return "", err
+	}
+
+	err = service.s3.Upload(abs, key)
+	if err != nil {
+		return "", err
+	}
+
+	err = service.publisher.Publish(key)
+	if err != nil {
+		return "", err
+	}
+
+	err = os.Remove(file.Name())
 	if err != nil {
 		return "", err
 	}

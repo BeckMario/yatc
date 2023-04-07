@@ -24,7 +24,8 @@ func main() {
 	defer client.Close()
 
 	s3 := media.NewDaprS3(client, config.Dapr.S3)
-	service := media.NewMediaService(s3)
+	publisher := media.NewDaprMediaPublisher(client, config.Dapr.PubSub)
+	service := media.NewMediaService(s3, publisher)
 	api := media.NewMediaApi(service)
 
 	port, err := strconv.Atoi(config.Port)

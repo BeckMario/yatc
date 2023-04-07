@@ -3,3 +3,6 @@ dapr:
   grpc-port: "50001"
   s3-binding:
     name: "s3"
+  pubsub:
+    name: "pubsub"
+    topic: "media"

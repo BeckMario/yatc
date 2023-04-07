@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/render"
 	"io"
 	"net/http"
+	"strings"
 	"yatc/internal"
 )
 
@@ -73,8 +74,12 @@ func (api *Api) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, extension, _ := strings.Cut(contentType, "/")
+
 	media := &Media{
-		metadata: Metadata{},
+		metadata: Metadata{
+			Extension: extension,
+		},
 		fileName: mediaUpload.Media.Filename(),
 		reader:   io.Reader(reader),
 	}
