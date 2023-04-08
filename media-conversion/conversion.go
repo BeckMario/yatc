@@ -9,17 +9,19 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	fluentffmpeg "github.com/modfy/fluent-ffmpeg"
-	"github.com/nickalie/go-webpbin"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"image"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+)
+
+var (
+	FfmpegExecutable   = "./ffmpeg"
+	CwebpExecutable    = "./cwebp"
+	Gif2webpExecutable = "./gif2webp"
 )
 
 func HandleMessage(ofctx ofctx.Context, in []byte) (ofctx.Out, error) {
@@ -36,65 +38,11 @@ func HandleMessage(ofctx ofctx.Context, in []byte) (ofctx.Out, error) {
 	}
 	logger.Debug("received message from input binding", zap.String("MediaId", mediaEvent.MediaId))
 
-	id, extension := getMediaIdComponents(mediaEvent.MediaId)
-
-	// TODO: Could do tracing here with traceparent
-	response, err := http.Get(fmt.Sprintf("http://localhost:8083/media/%s", mediaEvent.MediaId))
-	if err != nil {
-		logger.Error("error getting presigned url", zap.Error(err))
-		return ofctx.ReturnOnInternalError(), err
-	}
-
-	err = writeToDisk(mediaEvent.MediaId, response.Body)
-	if err != nil {
-		logger.Error("error writing to disk", zap.Error(err))
-		return ofctx.ReturnOnInternalError(), err
-	}
-
-	done := make(chan FileOp, 1)
-	go func() {
-		switch extension {
-		case "mp4":
-			done <- mp4ToWebm(id, logger)
-			break
-		case "png", "jpeg":
-			done <- imgToWebp(id, extension)
-			break
-		case "gif":
-			done <- gifToWebp(id)
-			break
-		default:
-			done <- FileOp{err: errors.New("unrecognized format")}
-		}
-	}()
-
-	// TODO: Shouldnt hardcode
-	client, err := minio.New("localhost:9000", &minio.Options{
-		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
-		Secure: false,
-	})
-	if err != nil {
-		logger.Error("error creating minio client", zap.Error(err))
-		return ofctx.ReturnOnInternalError(), err
-	}
-
 	// Need to do this in a go routine because dapr issues a timeout after a certain amount of time. This seems not to be configurable in the open function framework
 	go func() {
-		logger.Debug("Waiting for conversion")
-
-		fileOp := <-done
-
-		logger.Debug("Finished conversion", zap.String("outputPath", fileOp.path))
-
-		err := upload(client, fileOp)
+		err = MediaConversion(mediaEvent, logger)
 		if err != nil {
-			logger.Error("error uploading", zap.Error(err))
-			return
-		}
-
-		err = cleanUp(mediaEvent.MediaId, fileOp.path)
-		if err != nil {
-			logger.Error("error cleaning up", zap.Error(err))
+			logger.Error("error converting", zap.Error(err))
 			return
 		}
 	}()
@@ -109,6 +57,72 @@ type FileOp struct {
 
 type MediaEvent struct {
 	MediaId string
+}
+
+func MediaConversion(mediaEvent MediaEvent, logger *zap.Logger) error {
+	logger.Debug("ffmpeg executable path", zap.String("path", FfmpegExecutable))
+	logger.Debug("cwebp executable path", zap.String("path", CwebpExecutable))
+	logger.Debug("gif2webp executable path", zap.String("path", Gif2webpExecutable))
+
+	id, extension := getMediaIdComponents(mediaEvent.MediaId)
+
+	// TODO: Could do tracing here with traceparent
+	response, err := http.Get(fmt.Sprintf("http://localhost:8083/media/%s", mediaEvent.MediaId))
+	if err != nil {
+		logger.Error("error getting presigned url", zap.Error(err))
+		return err
+	}
+
+	err = writeToDisk(mediaEvent.MediaId, response.Body)
+	if err != nil {
+		logger.Error("error writing to disk", zap.Error(err))
+		return err
+	}
+
+	done := make(chan FileOp, 1)
+	go func() {
+		switch extension {
+		case "mp4":
+			done <- mp4ToWebm(id, logger)
+			break
+		case "png", "jpeg", "gif":
+			done <- imgToWebp(id, extension, logger)
+			break
+		default:
+			done <- FileOp{err: errors.New("unrecognized format")}
+		}
+	}()
+
+	// TODO: Shouldnt hardcode
+	client, err := minio.New("localhost:9000", &minio.Options{
+		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+		Secure: false,
+	})
+	if err != nil {
+		logger.Error("error creating minio client", zap.Error(err))
+		return err
+	}
+
+	logger.Debug("Waiting for conversion")
+	fileOp := <-done
+	if fileOp.err != nil {
+		logger.Debug("error while converting", zap.Error(err))
+		return fileOp.err
+	}
+	logger.Debug("Finished conversion", zap.String("outputPath", fileOp.path))
+
+	err = upload(client, fileOp)
+	if err != nil {
+		logger.Error("error uploading", zap.Error(err))
+		return err
+	}
+
+	err = cleanUp(mediaEvent.MediaId, fileOp.path)
+	if err != nil {
+		logger.Error("error cleaning up", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func getMediaIdComponents(mediaId string) (string, string) {
@@ -130,10 +144,6 @@ func cleanUp(input string, output string) error {
 }
 
 func upload(client *minio.Client, fileOp FileOp) error {
-	if fileOp.err != nil {
-		return fileOp.err
-	}
-
 	_, err := client.FPutObject(context.Background(), "testbucket", fileOp.path, fileOp.path, minio.PutObjectOptions{}) //reader, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return err
@@ -159,79 +169,31 @@ func writeToDisk(path string, reader io.Reader) error {
 	return nil
 }
 
-func getDecoder(extension string) (func(r io.Reader) (image.Image, error), error) {
-	switch extension {
-	case "jpeg":
-		return jpeg.Decode, nil
-	case "png":
-		return png.Decode, nil
-	default:
-		return nil, errors.New("unrecognized format")
-	}
-}
-
-func gifToWebp(id string) FileOp {
-	input := fmt.Sprintf("%s.gif", id)
-	output := fmt.Sprintf("%s.webp", id)
-
-	inputFile, err := os.Open(input)
-	if err != nil {
-		return FileOp{err: err}
-	}
-
-	defer func(inputFile *os.File) {
-		_ = inputFile.Close()
-	}(inputFile)
-
-	outputFile, err := os.Create(output)
-	if err != nil {
-		return FileOp{err: err}
-	}
-
-	defer func(outputFile *os.File) {
-		_ = outputFile.Close()
-	}(outputFile)
-
-	err = exec.Command("./gif2webp", input, "-o", output).Run()
-	if err != nil {
-		return FileOp{err: err}
-	}
-	return FileOp{path: output}
-}
-
-func imgToWebp(id string, extension string) FileOp {
+func imgToWebp(id string, extension string, logger *zap.Logger) FileOp {
 	input := fmt.Sprintf("%s.%s", id, extension)
 	output := fmt.Sprintf("%s.webp", id)
 
-	inputFile, err := os.Open(input)
-	if err != nil {
-		return FileOp{err: err}
-	}
-
-	defer func(inputFile *os.File) {
-		_ = inputFile.Close()
-	}(inputFile)
-
-	decoder, err := getDecoder(extension)
-	if err != nil {
-		return FileOp{err: err}
-	}
-
-	img, err := decoder(inputFile)
-	if err != nil {
-		return FileOp{err: err}
-	}
-
 	outputFile, err := os.Create(output)
 	if err != nil {
 		return FileOp{err: err}
 	}
+	_ = outputFile.Close()
 
-	defer func(outputFile *os.File) {
-		_ = outputFile.Close()
-	}(outputFile)
+	var stdOut []byte
+	switch extension {
+	case "gif":
+		stdOut, err = exec.Command(Gif2webpExecutable, input, "-o", output).CombinedOutput()
+		break
+	case "png", "jpeg":
+		stdOut, err = exec.Command(CwebpExecutable, input, "-o", output).CombinedOutput()
+		break
+	default:
+		err = errors.New("unrecognized format")
+		stdOut = make([]byte, 0)
+	}
 
-	err = webpbin.Encode(outputFile, img)
+	logger.Debug("webp output", zap.ByteString("output", stdOut))
+
 	if err != nil {
 		return FileOp{err: err}
 	}
@@ -245,7 +207,7 @@ func mp4ToWebm(id string, logger *zap.Logger) FileOp {
 	input := fmt.Sprintf("%s.mp4", id)
 	output := fmt.Sprintf("%s.webm", id)
 
-	err := fluentffmpeg.NewCommand("./ffmpeg").
+	err := fluentffmpeg.NewCommand(FfmpegExecutable).
 		InputPath(input).
 		AudioCodec("libopus").
 		AudioBitRate(48000).
@@ -259,7 +221,7 @@ func mp4ToWebm(id string, logger *zap.Logger) FileOp {
 		OutputPath(output).
 		Run()
 
-	out, _ := io.ReadAll(buf) // read logs
+	out, _ := io.ReadAll(buf)
 	logger.Debug("ffmpeg output", zap.String("output", string(out)))
 
 	if err != nil {

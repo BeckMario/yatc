@@ -21,7 +21,5 @@ COPY --from=prepare /lib/x86_64-linux-gnu/libm.so.6 /lib/libm.so.6
 COPY --from=prepare /lib/x86_64-linux-gnu/libc.so.6 /lib/libc.so.6
 COPY --from=prepare /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 
-ENV SKIP_DOWNLOAD=true
-ENV VENDOR_PATH=/workspace
 ENV LD_LIBRARY_PATH=/lib
 USER cnb
