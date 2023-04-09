@@ -19,10 +19,23 @@ import (
 )
 
 var (
-	FfmpegExecutable   = "./ffmpeg"
-	CwebpExecutable    = "./cwebp"
-	Gif2webpExecutable = "./gif2webp"
+	FfmpegExecutable    = "./ffmpeg"
+	CwebpExecutable     = "./cwebp"
+	Gif2webpExecutable  = "./gif2webp"
+	mediaServiceAddress = getEnvVar("MEDIA_SERVICE", "http://localhost:8083")
+	s3Endpoint          = getEnvVar("S3_ENDPOINT", "localhost:9000")
+	s3Id                = getEnvVar("S3_ACCESS_KEY", "minioadmin")
+	s3Secret            = getEnvVar("S3_SECRET_KEY", "minioadmin")
+	s3Token             = getEnvVar("S3_TOKEN", "")
+	s3Bucket            = getEnvVar("S3_BUCKET", "testbucket")
 )
+
+func getEnvVar(key, fallbackValue string) string {
+	if val, ok := os.LookupEnv(key); ok {
+		return strings.TrimSpace(val)
+	}
+	return fallbackValue
+}
 
 func HandleMessage(ofctx ofctx.Context, in []byte) (ofctx.Out, error) {
 	logger, _ := zap.NewDevelopment()
@@ -67,7 +80,7 @@ func MediaConversion(mediaEvent MediaEvent, logger *zap.Logger) error {
 	id, extension := getMediaIdComponents(mediaEvent.MediaId)
 
 	// TODO: Could do tracing here with traceparent
-	response, err := http.Get(fmt.Sprintf("http://localhost:8083/media/%s", mediaEvent.MediaId))
+	response, err := http.Get(fmt.Sprintf("%s/media/%s", mediaServiceAddress, mediaEvent.MediaId))
 	if err != nil {
 		logger.Error("error getting presigned url", zap.Error(err))
 		return err
@@ -93,9 +106,8 @@ func MediaConversion(mediaEvent MediaEvent, logger *zap.Logger) error {
 		}
 	}()
 
-	// TODO: Shouldnt hardcode
-	client, err := minio.New("localhost:9000", &minio.Options{
-		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+	client, err := minio.New(s3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(s3Id, s3Secret, s3Token),
 		Secure: false,
 	})
 	if err != nil {
@@ -144,7 +156,7 @@ func cleanUp(input string, output string) error {
 }
 
 func upload(client *minio.Client, fileOp FileOp) error {
-	_, err := client.FPutObject(context.Background(), "testbucket", fileOp.path, fileOp.path, minio.PutObjectOptions{}) //reader, -1, minio.PutObjectOptions{})
+	_, err := client.FPutObject(context.Background(), s3Bucket, fileOp.path, fileOp.path, minio.PutObjectOptions{}) //reader, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return err
 	}

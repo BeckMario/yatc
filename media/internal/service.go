@@ -37,7 +37,7 @@ func (service *MediaService) UploadFile(media *Media) (string, error) {
 	mediaId := uuid.New()
 	key := fmt.Sprintf("%s.%s", mediaId, media.metadata.Extension)
 
-	file, err := os.Create(fmt.Sprintf("tmp-%s", mediaId.String()))
+	file, err := os.Create(fmt.Sprintf("/tmp/tmp-%s", mediaId.String()))
 	if err != nil {
 		return "", err
 	}

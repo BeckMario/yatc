@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-streams-auth
+type: Opaque
+data:
+  redis_username: ""
+  redis_password: "RFJkc3Y5WVRmTg=="
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-redis-stream-triggerauth
+spec:
+  secretTargetRef:
+    - parameter: username
+      name: redis-streams-auth # name of the Secret
+      key: redis_username # name of the key in the Secret
+    - parameter: password
+      name: redis-streams-auth # name of the Secret
+      key: redis_password # name of the key in the Secret
+---
+apiVersion: core.openfunction.io/v1beta1
+kind: Function
+metadata:
+  name: media-conversion
+spec:
+  version: "v1.0.0"
+  image: reg.technicalonions.de/media-conversion:latest
+  imageCredentials:
+    name: container-registry
+  serving:
+    runtime: async
+    #    scaleOptions:
+    #      minReplicas: 0
+    #      maxReplicas: 10
+    #      keda:
+    #        scaledObject:
+    #          pollingInterval: 15
+    #          minReplicaCount: 0
+    #          maxReplicaCount: 10
+    #          cooldownPeriod: 60
+    #          advanced:
+    #            horizontalPodAutoscalerConfig:
+    #              behavior:
+    #                scaleDown:
+    #                  stabilizationWindowSeconds: 45
+    #                  policies:
+    #                  - type: Percent
+    #                    value: 50
+    #                    periodSeconds: 15
+    #                scaleUp:
+    #                  stabilizationWindowSeconds: 0
+    #    triggers:
+    #      - type: redis-streams
+    #        metadata:
+    #          address: redis-master:6379
+    #          stream: media
+    #          consumerGroup: subscriber
+    #        authenticationRef:
+    #          name: keda-redis-stream-triggerauth
+    inputs:
+      - name: subscriber
+        component: redis-server
+        topic: "media"
+    pubsub:
+      redis-server:
+        type: pubsub.redis
+        version: v1
+        metadata:
+          - name: redisHost
+            value: redis-master:6379
+          - name: redisPassword
+            secretKeyRef:
+              name: redis
+              key: redis-password
+          - name: consumerID
+            value: "subscriber"
+          - name: enableTLS
+            value: "false"
+    template:
+      containers:
+        - name: function # DO NOT change this
+          env:
+            - name: MEDIA_SERVICE
+              value: "http://mediaapp.default.svc.cluster.local"
+            - name: S3_ENDPOINT
+              value: "minio.minio.svc.cluster.local:9000"
+          imagePullPolicy: Always

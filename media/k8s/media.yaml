@@ -1,0 +1,63 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mediaapp
+  labels:
+    app: media
+spec:
+  selector:
+    app: media
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediaapp
+  labels:
+    app: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media
+  template:
+    metadata:
+      labels:
+        app: media
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "media"
+        dapr.io/app-port: "8080"
+        dapr.io/enable-api-logging: "true"
+        dapr.io/volume-mounts-rw: "test-volume:/tmp"
+    spec:
+      volumes:
+        - name: test-volume
+          hostPath:
+            path: /tmp
+            type: DirectoryOrCreate
+      imagePullSecrets:
+        - name: container-registry
+      containers:
+        - name: media-service
+          image: reg.technicalonions.de/media-service:latest
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DAPR_PUBSUB_NAME
+              value: "pubsub"
+            - name: DAPR_TOPIC_NAME
+              value: "media"
+            - name: DAPR_S3_BINDING_NAME
+              value: "s3"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /tmp
+              name: test-volume

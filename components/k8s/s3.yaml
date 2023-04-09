@@ -1,0 +1,24 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: s3
+spec:
+  type: bindings.aws.s3
+  version: v1
+  metadata:
+    - name: bucket
+      value: testbucket
+    - name: region
+      value: us-west-2 #not used by minio but still required
+    - name: endpoint
+      value: minio.minio.svc.cluster.local:9000
+    - name: accessKey
+      value: minioadmin
+    - name: secretKey
+      value: minioadmin
+    - name: decodeBase64
+      value: true
+    - name: forcePathStyle
+      value: true
+    - name: disableSSL
+      value: true
