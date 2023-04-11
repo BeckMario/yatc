@@ -1,12 +1,15 @@
 package users
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"yatc/internal"
+)
 
 type User struct {
 	Id        uuid.UUID
 	Name      string
-	Followers map[uuid.UUID]struct{}
-	Followees map[uuid.UUID]struct{}
+	Followers *internal.Set[uuid.UUID]
+	Followees *internal.Set[uuid.UUID]
 }
 
 type Service interface {

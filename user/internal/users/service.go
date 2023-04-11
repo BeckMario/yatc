@@ -2,6 +2,7 @@ package users
 
 import (
 	"github.com/google/uuid"
+	"yatc/internal"
 	"yatc/user/pkg/users"
 )
 
@@ -22,8 +23,8 @@ func (userService *Service) GetUser(uuid uuid.UUID) (users.User, error) {
 }
 
 func (userService *Service) CreateUser(user users.User) (users.User, error) {
-	user.Followers = map[uuid.UUID]struct{}{}
-	user.Followees = map[uuid.UUID]struct{}{}
+	user.Followers = internal.Ptr(internal.NewSet[uuid.UUID]())
+	user.Followees = internal.Ptr(internal.NewSet[uuid.UUID]())
 	return userService.repo.Save(user)
 }
 

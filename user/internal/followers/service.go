@@ -26,7 +26,7 @@ func (service *Service) GetFollowers(ctx context.Context, userId uuid.UUID) ([]u
 		return nil, err
 	}
 	followers := make([]users.User, 0)
-	for followerId := range user.Followers {
+	for _, followerId := range user.Followers.ToArray() {
 		follower, err := service.repo.Get(followerId)
 		if err != nil {
 			if errors.Is(err, internal.NotFoundError(userId)) {
@@ -47,7 +47,7 @@ func (service *Service) GetFollowees(ctx context.Context, userId uuid.UUID) ([]u
 		return nil, err
 	}
 	followees := make([]users.User, 0)
-	for followerId := range user.Followees {
+	for _, followerId := range user.Followees.ToArray() {
 		followee, err := service.repo.Get(followerId)
 		if err != nil {
 			if errors.Is(err, internal.NotFoundError(userId)) {
@@ -72,14 +72,14 @@ func (service *Service) FollowUser(ctx context.Context, userToFollowId uuid.UUID
 	if err != nil {
 		return users.User{}, err
 	}
-	userToFollow.Followers[userWhichFollowsId] = struct{}{}
+	userToFollow.Followers.Add(userWhichFollowsId)
 
 	// Add user to followee of follower
 	userWhichFollows, err := service.repo.Get(userWhichFollowsId)
 	if err != nil {
 		return users.User{}, err
 	}
-	userWhichFollows.Followees[userToFollowId] = struct{}{}
+	userWhichFollows.Followees.Add(userToFollowId)
 
 	userToFollow, err = service.repo.Save(userToFollow)
 	if err != nil {
@@ -104,20 +104,20 @@ func (service *Service) UnfollowUser(ctx context.Context, userToUnfollowId uuid.
 	if err != nil {
 		return err
 	}
-	if _, exists := userToUnfollow.Followers[userWhichUnfollowsId]; !exists {
+	if !userToUnfollow.Followers.Has(userWhichUnfollowsId) {
 		return internal.NotFoundError(userWhichUnfollowsId)
 	}
-	delete(userToUnfollow.Followers, userWhichUnfollowsId)
+	userToUnfollow.Followers.Remove(userWhichUnfollowsId)
 
 	// Delete user from followees of follower
 	userWhichUnfollows, err := service.repo.Get(userWhichUnfollowsId)
 	if err != nil {
 		return err
 	}
-	if _, exists := userWhichUnfollows.Followees[userToUnfollowId]; !exists {
+	if !userWhichUnfollows.Followees.Has(userToUnfollowId) {
 		return internal.NotFoundError(userToUnfollowId)
 	}
-	delete(userWhichUnfollows.Followees, userToUnfollowId)
+	userWhichUnfollows.Followees.Remove(userToUnfollowId)
 
 	userToUnfollow, err = service.repo.Save(userToUnfollow)
 	if err != nil {

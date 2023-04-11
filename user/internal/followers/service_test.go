@@ -55,24 +55,24 @@ func TestService_GetFollowers(t *testing.T) {
 		{
 			Id:        uuid.New(),
 			Name:      "User 1",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 		{
 			Id:        uuid.New(),
 			Name:      "User 2",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 		{
 			Id:        uuid.New(),
 			Name:      "User 3",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 	}
-	mockUsers[0].Followers[mockUsers[1].Id] = struct{}{}
-	mockUsers[0].Followers[mockUsers[2].Id] = struct{}{}
+	mockUsers[0].Followers.Add(mockUsers[1].Id)
+	mockUsers[0].Followers.Add(mockUsers[2].Id)
 
 	mockRepo := newMockRepo()
 	for _, user := range mockUsers {
@@ -97,24 +97,24 @@ func TestService_GetFollowees(t *testing.T) {
 		{
 			Id:        uuid.New(),
 			Name:      "User 1",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 		{
 			Id:        uuid.New(),
 			Name:      "User 2",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 		{
 			Id:        uuid.New(),
 			Name:      "User 3",
-			Followers: make(map[uuid.UUID]struct{}),
-			Followees: make(map[uuid.UUID]struct{}),
+			Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+			Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 		},
 	}
-	mockUsers[0].Followees[mockUsers[1].Id] = struct{}{}
-	mockUsers[0].Followees[mockUsers[2].Id] = struct{}{}
+	mockUsers[0].Followees.Add(mockUsers[1].Id)
+	mockUsers[0].Followees.Add(mockUsers[2].Id)
 
 	mockRepo := newMockRepo()
 	for _, user := range mockUsers {

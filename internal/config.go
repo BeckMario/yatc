@@ -18,11 +18,16 @@ type DaprConfig struct {
 		Timeline string `yaml:"timeline" env:"DAPR_TIMELINE_APP_ID" env-default:"timeline-service"`
 		Media    string `yaml:"media" env:"DAPR_MEDIA_APP_ID" env-default:"media-service"`
 	} `yaml:"app-ids"`
-	Host     string          `yaml:"host" env:"DAPR_HOST" env-default:"http://localhost"`
-	HttpPort string          `yaml:"http-port" env:"DAPR_HTTP_PORT" env-default:"3500"`
-	GrpcPort string          `yaml:"grpc-port" env:"DAPR_GRPC_PORT" env-default:"50001"`
-	PubSub   PubSubConfig    `yaml:"pubsub"`
-	S3       S3BindingConfig `yaml:"s3-binding"`
+	Host       string           `yaml:"host" env:"DAPR_HOST" env-default:"http://localhost"`
+	HttpPort   string           `yaml:"http-port" env:"DAPR_HTTP_PORT" env-default:"3500"`
+	GrpcPort   string           `yaml:"grpc-port" env:"DAPR_GRPC_PORT" env-default:"50001"`
+	PubSub     PubSubConfig     `yaml:"pubsub"`
+	S3         S3BindingConfig  `yaml:"s3-binding"`
+	StateStore StateStoreConfig `yaml:"state-store"`
+}
+
+type StateStoreConfig struct {
+	Name string `yaml:"name" env:"DAPR_STATE_STORE_NAME" env-default:"pubsub"`
 }
 
 type PubSubConfig struct {
