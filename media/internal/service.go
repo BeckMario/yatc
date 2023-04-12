@@ -2,11 +2,14 @@ package media
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"io"
+	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Metadata struct {
@@ -21,7 +24,7 @@ type Media struct {
 
 type Service interface {
 	UploadFile(media *Media) (string, error)
-	DownloadFile(mediaId string) (string, error)
+	DownloadFile(mediaId string, compressed bool) (string, error)
 }
 
 type MediaService struct {
@@ -76,6 +79,28 @@ func (service *MediaService) UploadFile(media *Media) (string, error) {
 	return key, nil
 }
 
-func (service *MediaService) DownloadFile(mediaId string) (string, error) {
-	return service.s3.Presign("5m", mediaId)
+func getCompressionExtension(uncompressedExtension string) (string, error) {
+	contentType := mime.TypeByExtension(uncompressedExtension)
+	imgOrVid, _, _ := strings.Cut(contentType, "/")
+	if imgOrVid == "image" {
+		return "webp", nil
+	} else if imgOrVid == "video" {
+		return "webm", nil
+	} else {
+		return "", errors.New("unrecognized format")
+	}
+}
+
+func (service *MediaService) DownloadFile(mediaId string, compressed bool) (string, error) {
+	id, extension, _ := strings.Cut(mediaId, ".")
+
+	if compressed {
+		compressionExtension, err := getCompressionExtension(fmt.Sprintf(".%s", extension))
+		if err != nil {
+			return "", err
+		}
+		return service.s3.Presign("5m", fmt.Sprintf("%s.%s", id, compressionExtension))
+	} else {
+		return service.s3.Presign("5m", mediaId)
+	}
 }

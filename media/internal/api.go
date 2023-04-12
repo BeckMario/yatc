@@ -2,11 +2,14 @@ package media
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 	"yatc/internal"
@@ -112,8 +115,18 @@ func isContentTypeAllowed(contentType string) bool {
 	return false
 }
 
-func (api *Api) DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId string) {
-	url, err := api.service.DownloadFile(mediaId)
+func (api *Api) DownloadMedia(w http.ResponseWriter, r *http.Request, mediaId string, params DownloadMediaParams) {
+	//Validation
+	id, extension, found := strings.Cut(mediaId, ".")
+	contentType := mime.TypeByExtension(fmt.Sprintf(".%s", extension))
+
+	if _, err := uuid.Parse(id); !found || err != nil || !isContentTypeAllowed(contentType) {
+		internal.ReplyWithError(w, r, errors.New("invalid mediaId"), http.StatusBadRequest)
+		return
+	}
+
+	compressed := params.Compressed != nil && *params.Compressed
+	url, err := api.service.DownloadFile(mediaId, compressed)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return

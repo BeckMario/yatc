@@ -41,6 +41,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: compressed
+          in: query
+          description: boolean which indicates if the compressed version is requested
+          required: false
+          schema:
+            type: boolean
       responses:
         '303':
           description: location of the download url
