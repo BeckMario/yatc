@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"gopkg.in/yaml.v3"
@@ -86,7 +85,6 @@ func (Run) MediaConversion() error {
 	for _, metadata := range pubsubComponent.Spec.Metadata {
 		pubsubMetadata[metadata.Name] = metadata.Value
 	}
-	inputMap := map[string]inputs{"redis": {pubsubComponent.Metadata.Name, pubsubComponent.Spec.Type, "media", pubsubMetadata}}
 
 	funcContext := struct {
 		Name    string
@@ -99,24 +97,32 @@ func (Run) MediaConversion() error {
 		Version: "v1.0.0",
 		Port:    "8084",
 		Runtime: "Async",
-		Inputs:  inputMap,
+		Inputs:  map[string]inputs{"redis": {pubsubComponent.Metadata.Name, pubsubComponent.Spec.Type, "media", pubsubMetadata}},
 	}
 
 	funcContextJson, err := json.Marshal(funcContext)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(funcContextJson))
+
+	_ = sh.Run("docker", "stop", "media-conversion")
+
+	envs := map[string]string{"FUNC_CONTEXT": string(funcContextJson),
+		"CONTEXT_MODE":   "self-host",
+		"DAPR_GRPC_PORT": "50014",
+		"APP_PROTOCOL":   "grpc"}
+
 	daprArgs := []string{"--app-id", "media-conversion", "--app-port", strconv.Itoa(8084),
 		"--resources-path", "./components", "--app-protocol", "grpc", "-G", "50014"}
-	dockerArgs := []string{"docker", "run", "--rm", "--env", fmt.Sprintf("FUNC_CONTEXT=%s", string(funcContextJson)),
-		"--env", "CONTEXT_MODE=self-host", "--env", "DAPR_GRPC_PORT=50014", "--env", "APP_PROTOCOL=grpc", "--name", "media-conversion",
+	dockerArgs := []string{"docker", "run", "--rm", "--env", "FUNC_CONTEXT",
+		"--env", "CONTEXT_MODE", "--env", "DAPR_GRPC_PORT", "--env", "APP_PROTOCOL", "--name", "media-conversion",
 		"--network", "host", "media-conversion"}
+
 	args := []string{"run"}
 	args = append(args, daprArgs...)
 	args = append(args, "--")
 	args = append(args, dockerArgs...)
-	return sh.RunWithV(nil, "dapr", args...)
+	return sh.RunWithV(envs, "dapr", args...)
 }
 
 // All Run all services
