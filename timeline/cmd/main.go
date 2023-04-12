@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	dapr "github.com/dapr/go-sdk/client"
 	"go.uber.org/zap"
 	"strconv"
 	"yatc/internal"
@@ -19,9 +20,15 @@ func main() {
 
 	config := internal.NewConfig("timeline/config/config.yaml", logger)
 
-	repo := timelines.NewInMemoryRepo()
-	client := followers.NewFollowerClient(config.Dapr)
-	service := timelines.NewTimelineService(repo, client)
+	client, err := dapr.NewClientWithPort(config.Dapr.GrpcPort)
+	if err != nil {
+		logger.Fatal("cant connect to dapr sidecar", zap.Error(err))
+	}
+	defer client.Close()
+
+	repo := timelines.NewDaprRepo(client, config.Dapr.StateStore) //timelines.NewInMemoryRepo()
+	followerClient := followers.NewFollowerClient(config.Dapr)
+	service := timelines.NewTimelineService(repo, followerClient)
 	api := timelines.NewTimelineApi(service)
 
 	port, err := strconv.Atoi(config.Port)
@@ -36,7 +43,7 @@ func main() {
 	subscriber.Subscribe(func(ctx context.Context, status statuses.Status) {
 		err := service.UpdateTimelines(ctx, status.UserId, status)
 		if err != nil {
-			logger.Error("updateing timelines", zap.Error(err), zap.Any("status", status))
+			logger.Error("updating timelines", zap.Error(err), zap.Any("status", status))
 		}
 	})
 

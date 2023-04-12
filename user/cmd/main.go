@@ -1,6 +1,7 @@
 package main
 
 import (
+	dapr "github.com/dapr/go-sdk/client"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"strconv"
@@ -20,20 +21,34 @@ func main() {
 
 	config := internal.NewConfig("user/config/config.yaml", logger)
 
-	userRepo := iusers.NewInMemoryRepo()
-	_, _ = userRepo.Save(users.User{
+	client, err := dapr.NewClientWithPort(config.Dapr.GrpcPort)
+	if err != nil {
+		logger.Fatal("cant connect to dapr sidecar", zap.Error(err))
+	}
+	defer client.Close()
+
+	userRepo := iusers.NewDaprRepo(client, config.Dapr.StateStore)
+	_, err = userRepo.Save(users.User{
 		Id:        uuid.MustParse("dc52828f-9c08-4e38-ace0-bf2bd87bfff6"),
 		Name:      "Hans",
-		Followers: map[uuid.UUID]struct{}{},
-		Followees: map[uuid.UUID]struct{}{},
+		Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+		Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 	})
 
-	_, _ = userRepo.Save(users.User{
+	if err != nil {
+		logger.Error("error", zap.Error(err))
+	}
+
+	_, err = userRepo.Save(users.User{
 		Id:        uuid.MustParse("e0758810-9119-4b8e-b3b8-53c5959d0bee"),
 		Name:      "Peter",
-		Followers: map[uuid.UUID]struct{}{},
-		Followees: map[uuid.UUID]struct{}{},
+		Followers: internal.Ptr(internal.NewSet[uuid.UUID]()),
+		Followees: internal.Ptr(internal.NewSet[uuid.UUID]()),
 	})
+
+	if err != nil {
+		logger.Fatal("error", zap.Error(err))
+	}
 
 	userService := iusers.NewUserService(userRepo)
 	followerService := followers.NewFollowerService(userRepo)

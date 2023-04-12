@@ -7,3 +7,5 @@ dapr:
   pubsub:
     name: "pubsub"
     topic: "status"
+  state-store:
+    name: "statestore"

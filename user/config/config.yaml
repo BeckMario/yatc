@@ -1,3 +1,5 @@
 port: "8080"
 dapr:
-  HttpPort: "3501"
+  http-port: "3501"
+  state-store:
+    name: "statestore"
