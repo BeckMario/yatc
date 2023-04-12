@@ -1,0 +1,3 @@
+name: yatc
+runtime: go
+description: IaC for yatc
