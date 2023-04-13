@@ -169,12 +169,11 @@ type DockerConfig struct {
 }
 
 func main() {
-
 	services := make([]*Service, 0)
 	mediaService := NewService("media", 8083, 8083)
 	mediaService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	mediaService.AddContainerEnv("DAPR_TOPIC_NAME", "media")
-	mediaService.AddContainerEnv("DAPR_TOPIC_NAME", "s3")
+	mediaService.AddContainerEnv("DAPR_S3_BINDING_NAME", "s3")
 	services = append(services, mediaService)
 
 	timelineService := NewService("timeline", 8082, 8082)
@@ -186,7 +185,7 @@ func main() {
 	statusService := NewService("status", 8081, 8081)
 	statusService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	statusService.AddContainerEnv("DAPR_TOPIC_NAME", "status")
-	statusService.AddContainerEnv("DATABASE", "TODO")
+	statusService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, statusService)
 
 	userService := NewService("user", 8080, 8080)
@@ -228,23 +227,51 @@ func main() {
 			return err
 		}
 
-		dapr, err := helm.NewRelease(ctx, "dapr", &helm.ReleaseArgs{
-			Version:         pulumi.String("1.10"),
-			Chart:           pulumi.String("dapr"),
-			Namespace:       pulumi.String("dapr-system"),
-			CreateNamespace: pulumi.Bool(true),
-			RepositoryOpts: &helm.RepositoryOptsArgs{
-				Repo: pulumi.String("https://dapr.github.io/helm-charts/"),
-			},
-		})
+		daprNamespace, err := corev1.NewNamespace(ctx, "dapr-system", &corev1.NamespaceArgs{})
 		if err != nil {
 			return err
 		}
 
-		redis, err := helm.NewRelease(ctx, "redis", &helm.ReleaseArgs{
+		dapr, err := helm.NewChart(ctx, "dapr", helm.ChartArgs{
+			Version:   pulumi.String("1.10"),
+			Chart:     pulumi.String("dapr"),
+			Namespace: daprNamespace.Metadata.Elem().Name().Elem(),
+			FetchArgs: &helm.FetchArgs{
+				Repo: pulumi.String("https://dapr.github.io/helm-charts/"),
+			},
+		}, pulumi.DependsOn([]pulumi.Resource{daprNamespace}))
+		if err != nil {
+			return err
+		}
+
+		minioNamespace, err := corev1.NewNamespace(ctx, "minio", &corev1.NamespaceArgs{})
+		if err != nil {
+			return err
+		}
+
+		minio, err := helm.NewChart(ctx, "minio", helm.ChartArgs{
+			Version:   pulumi.String("12.2.4"),
+			Chart:     pulumi.String("minio"),
+			Namespace: minioNamespace.Metadata.Elem().Name().Elem(),
+			FetchArgs: &helm.FetchArgs{
+				Repo: pulumi.String("https://charts.bitnami.com/bitnami"),
+			},
+			Values: pulumi.Map{
+				"auth": pulumi.Map{
+					"rootUser":     pulumi.String("minioadmin"),
+					"rootPassword": pulumi.String("minioadmin"),
+				},
+				"defaultBuckets": pulumi.String("testbucket"),
+			},
+		}, pulumi.DependsOn([]pulumi.Resource{minioNamespace}))
+		if err != nil {
+			return err
+		}
+
+		redis, err := helm.NewChart(ctx, "redis", helm.ChartArgs{
 			Version: pulumi.String("17.9.4"),
 			Chart:   pulumi.String("redis"),
-			RepositoryOpts: &helm.RepositoryOptsArgs{
+			FetchArgs: &helm.FetchArgs{
 				Repo: pulumi.String("https://charts.bitnami.com/bitnami"),
 			},
 			Values: pulumi.Map{
@@ -257,35 +284,16 @@ func main() {
 			return err
 		}
 
-		minio, err := helm.NewRelease(ctx, "minio", &helm.ReleaseArgs{
-			Version:         pulumi.String("12.2.4"),
-			Chart:           pulumi.String("minio"),
-			Namespace:       pulumi.String("minio"),
-			CreateNamespace: pulumi.Bool(true),
-			RepositoryOpts: &helm.RepositoryOptsArgs{
-				Repo: pulumi.String("https://charts.bitnami.com/bitnami"),
-			},
-			Values: pulumi.Map{
-				"auth": pulumi.Map{
-					"rootUser":     pulumi.String("minioadmin"),
-					"rootPassword": pulumi.String("minioadmin"),
-				},
-				"defaultBuckets": pulumi.String("testbucket"),
-			},
-		})
-		if err != nil {
-			return err
-		}
-
 		daprComponents, err := yaml.NewConfigGroup(ctx, "dapr-components", &yaml.ConfigGroupArgs{
 			Files: []string{filepath.Join("../../components/k8s", "*.yaml")},
-		}, pulumi.DependsOn([]pulumi.Resource{dapr}))
+		}, pulumi.DependsOnInputs(dapr.Ready))
 		if err != nil {
 			return err
 		}
 
 		for _, service := range services {
-			_, err := NewServiceDeployment(ctx, service, pulumi.DependsOn([]pulumi.Resource{dapr, redis, minio, daprComponents}))
+			_, err := NewServiceDeployment(ctx, service, pulumi.DependsOn([]pulumi.Resource{daprComponents}),
+				pulumi.DependsOnInputs(dapr.Ready), pulumi.DependsOnInputs(minio.Ready), pulumi.DependsOnInputs(redis.Ready))
 			if err != nil {
 				return err
 			}

@@ -2,7 +2,6 @@ package main
 
 import (
 	dapr "github.com/dapr/go-sdk/client"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 	"strconv"
@@ -25,27 +24,27 @@ func main() {
 	}
 	defer client.Close()
 
-	db, err := sqlx.Connect("postgres", config.Database)
-	if err != nil {
-		logger.Fatal("cant connect to database", zap.Error(err))
-	}
-	defer db.Close()
+	/*	db, err := sqlx.Connect("postgres", config.Database)
+		if err != nil {
+			logger.Fatal("cant connect to database", zap.Error(err))
+		}
+		defer db.Close()
 
-	//TODO: Temporary use migration?
-	schema := `CREATE TABLE IF NOT EXISTS statuses (
-			id UUID PRIMARY KEY,
-			content TEXT,
-			user_id UUID
-		);`
+		//TODO: Temporary use migration?
+		schema := `CREATE TABLE IF NOT EXISTS statuses (
+				id UUID PRIMARY KEY,
+				content TEXT,
+				user_id UUID
+			);`
 
-	_, err = db.Exec(schema)
-	if err != nil {
-		logger.Fatal("cant apply default scheme to database", zap.Error(err))
-	}
+		_, err = db.Exec(schema)
+		if err != nil {
+			logger.Fatal("cant apply default scheme to database", zap.Error(err))
+		}*/
 
 	publisher := statuses.NewDaprStatusPublisher(client, config.Dapr.PubSub)
 	//repo := statuses.NewInMemoryRepo()
-	repo := statuses.NewPostgresRepo(db)
+	repo := statuses.NewDaprStateStore(client, config.Dapr.StateStore) //statuses.NewPostgresRepo(db)
 	service := statuses.NewStatusService(repo, publisher)
 	api := statuses.NewStatusApi(service)
 
