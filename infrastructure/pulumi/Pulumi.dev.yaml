@@ -1,0 +1,5 @@
+config:
+  yatc:docker-password:
+    secure: AAABANMQ+A3rrb4j0QNewAyf7NaJa1Zg6lJO82PvnkPtSSDYLAA00ZxqDsUzaBgd6ZrPlqXt2K3FaAf6vKZKcw==
+  yatc:docker-registry: reg.technicalonions.de
+  yatc:docker-username: mario
