@@ -13,7 +13,7 @@ type Run mg.Namespace
 
 func runDaprArgs(service string, appPort int, daprPort int) []string {
 	return []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
-		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./components"}
+		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./infrastructure/dapr-components"}
 }
 
 func runDapr(service string, appPort int, daprPort int) error {
@@ -70,7 +70,7 @@ type inputs struct {
 }
 
 func (Run) MediaConversion() error {
-	file, err := os.ReadFile("./components/pubsub.yaml")
+	file, err := os.ReadFile("./infrastructure/dapr-components/pubsub.yaml")
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (Run) MediaConversion() error {
 		"APP_PROTOCOL":   "grpc"}
 
 	daprArgs := []string{"--app-id", "media-conversion", "--app-port", strconv.Itoa(8084),
-		"--resources-path", "./components", "--app-protocol", "grpc", "-G", "50014"}
+		"--resources-path", "./infrastructure/dapr-components", "--app-protocol", "grpc", "-G", "50014"}
 	dockerArgs := []string{"docker", "run", "--rm", "--env", "FUNC_CONTEXT",
 		"--env", "CONTEXT_MODE", "--env", "DAPR_GRPC_PORT", "--env", "APP_PROTOCOL", "--name", "media-conversion",
 		"--network", "host", "media-conversion"}

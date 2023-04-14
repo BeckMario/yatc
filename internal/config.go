@@ -46,7 +46,7 @@ func NewConfig(path string, logger *zap.Logger) *Config {
 	if err != nil {
 		description, _ := cleanenv.GetDescription(&config, nil)
 		logger.Info("Config usage" + description)
-		logger.Warn("couldn't read config, using env as fallback", zap.Error(err))
+		logger.Info("couldn't read config, using env as fallback", zap.Error(err))
 		err := cleanenv.ReadEnv(&config)
 		if err != nil {
 			logger.Fatal("couldn't init config with config.yaml or env", zap.Error(err))
