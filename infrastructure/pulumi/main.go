@@ -9,10 +9,9 @@ import (
 	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/yaml"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	"path/filepath"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"strconv"
 )
 
@@ -45,20 +44,21 @@ func NewServiceDeployment(ctx *pulumi.Context, service *Service, opts ...pulumi.
 }
 
 type Service struct {
-	name        string
-	appName     pulumi.String
-	appPort     pulumi.Int
-	outsidePort pulumi.Int
-	appLabels   pulumi.StringMap
-	envs        map[string]string
+	name         string
+	appName      pulumi.String
+	appPort      pulumi.Int
+	outsidePort  pulumi.Int
+	appLabels    pulumi.StringMap
+	envs         map[string]string
+	sharedVolume bool
 }
 
-func NewService(appName string, appPort int, outsidePort int) *Service {
+func NewService(appName string, appPort int, outsidePort int, useSharedVolume bool) *Service {
 	appLabels := pulumi.StringMap{
 		"app": pulumi.String(appName),
 	}
 	return &Service{appName, pulumi.String(appName), pulumi.Int(appPort),
-		pulumi.Int(outsidePort), appLabels, make(map[string]string, 0)}
+		pulumi.Int(outsidePort), appLabels, make(map[string]string, 0), useSharedVolume}
 }
 
 func (service *Service) AddContainerEnv(key string, value string) {
@@ -91,10 +91,33 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 		return strconv.Itoa(port)
 	}).(pulumi.StringOutput)
 
+	// Ugly but i dont know how to change/transform/patch existing DeploymentArgs
+	var volumeAnnotationValue pulumi.String
+	var volumeArray corev1.VolumeArray
+	var volumeMounts corev1.VolumeMountArray
+	if service.sharedVolume {
+		volumeAnnotationValue = "shared-volume:/tmp"
+		volumeArray = corev1.VolumeArray{
+			&corev1.VolumeArgs{
+				Name: pulumi.String("shared-volume"),
+				HostPath: &corev1.HostPathVolumeSourceArgs{
+					Path: pulumi.String("/tmp"),
+					Type: pulumi.String("DirectoryOrCreate"),
+				},
+			},
+		}
+		volumeMounts = corev1.VolumeMountArray{
+			&corev1.VolumeMountArgs{
+				MountPath: pulumi.String("/tmp"),
+				Name:      pulumi.String("shared-volume"),
+			},
+		}
+	}
+
 	return &appsv1.DeploymentArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Labels: service.appLabels,
-			Name:   service.appName,
+			//Name:   service.appName,
 		},
 		Spec: &appsv1.DeploymentSpecArgs{
 			Replicas: pulumi.Int(1),
@@ -111,6 +134,7 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 						"dapr.io/enable-api-logging":                   pulumi.String("true"),
 						"dapr.io/log-level":                            pulumi.String("debug"),
 						"dapr.io/sidecar-liveness-probe-delay-seconds": pulumi.String("20"),
+						"dapr.io/volume-mounts-rw":                     volumeAnnotationValue,
 					},
 				},
 				Spec: &corev1.PodSpecArgs{
@@ -119,6 +143,7 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 							Name: pulumi.String("container-registry"),
 						},
 					},
+					Volumes: volumeArray,
 					Containers: corev1.ContainerArray{
 						&corev1.ContainerArgs{
 							Name:  service.appName,
@@ -130,6 +155,7 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 							},
 							ImagePullPolicy: pulumi.String("Always"),
 							Env:             service.getEnvVarArray(),
+							VolumeMounts:    volumeMounts,
 						},
 					},
 				},
@@ -142,6 +168,7 @@ func (service *Service) GetServiceArgs() *corev1.ServiceArgs {
 	return &corev1.ServiceArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Labels: service.appLabels,
+			//Name:   service.appName,
 		},
 		Spec: &corev1.ServiceSpecArgs{
 			Selector: pulumi.StringMap{
@@ -170,25 +197,25 @@ type DockerConfig struct {
 
 func main() {
 	services := make([]*Service, 0)
-	mediaService := NewService("media", 8083, 8083)
+	mediaService := NewService("media", 8083, 8083, true)
 	mediaService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	mediaService.AddContainerEnv("DAPR_TOPIC_NAME", "media")
 	mediaService.AddContainerEnv("DAPR_S3_BINDING_NAME", "s3")
 	services = append(services, mediaService)
 
-	timelineService := NewService("timeline", 8082, 8082)
+	timelineService := NewService("timeline", 8082, 8082, false)
 	timelineService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	timelineService.AddContainerEnv("DAPR_TOPIC_NAME", "status")
 	timelineService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, timelineService)
 
-	statusService := NewService("status", 8081, 8081)
+	statusService := NewService("status", 8081, 8081, false)
 	statusService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	statusService.AddContainerEnv("DAPR_TOPIC_NAME", "status")
 	statusService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, statusService)
 
-	userService := NewService("user", 8080, 8080)
+	userService := NewService("user", 8080, 8080, false)
 	userService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, userService)
 
@@ -227,7 +254,9 @@ func main() {
 			return err
 		}
 
-		daprNamespace, err := corev1.NewNamespace(ctx, "dapr-system", &corev1.NamespaceArgs{})
+		daprNamespace, err := corev1.NewNamespace(ctx, "dapr-system", &corev1.NamespaceArgs{
+			Metadata: &metav1.ObjectMetaArgs{Name: pulumi.String("dapr-system")},
+		})
 		if err != nil {
 			return err
 		}
@@ -244,7 +273,9 @@ func main() {
 			return err
 		}
 
-		minioNamespace, err := corev1.NewNamespace(ctx, "minio", &corev1.NamespaceArgs{})
+		minioNamespace, err := corev1.NewNamespace(ctx, "minio", &corev1.NamespaceArgs{
+			Metadata: &metav1.ObjectMetaArgs{Name: pulumi.String("minio")},
+		})
 		if err != nil {
 			return err
 		}
@@ -300,115 +331,4 @@ func main() {
 		}
 		return nil
 	})
-
-	/*pulumi.Run(func(ctx *pulumi.Context) error {
-		appName := "media"
-		appLabels := pulumi.StringMap{
-			"app": pulumi.String(appName),
-		}
-		appPort := 8080
-		outsidePort := 8080
-
-		_, err := corev1.NewService(ctx, appName, &corev1.ServiceArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Labels: appLabels,
-			},
-			Spec: &corev1.ServiceSpecArgs{
-				Selector: pulumi.StringMap{
-					"app": pulumi.String(appName),
-				},
-				Ports: corev1.ServicePortArray{
-					&corev1.ServicePortArgs{
-						Port:       pulumi.Int(outsidePort),
-						TargetPort: pulumi.Any(appPort),
-					},
-				},
-				Type: pulumi.String("LoadBalancer"),
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		_, err = appsv1.NewDeployment(ctx, appName, &appsv1.DeploymentArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Labels: appLabels,
-				Name:   pulumi.String(appName),
-			},
-			Spec: &appsv1.DeploymentSpecArgs{
-				Replicas: pulumi.Int(1),
-				Selector: &metav1.LabelSelectorArgs{
-					MatchLabels: appLabels,
-				},
-				Template: &corev1.PodTemplateSpecArgs{
-					Metadata: &metav1.ObjectMetaArgs{
-						Labels: appLabels,
-						Annotations: pulumi.StringMap{
-							"dapr.io/enabled":            pulumi.String("true"),
-							"dapr.io/app-id":             pulumi.String(appName),
-							"dapr.io/app-port":           pulumi.String(strconv.Itoa(appPort)),
-							"dapr.io/enable-api-logging": pulumi.String("true"),
-							"dapr.io/volume-mounts-rw":   pulumi.String("test-volume:/tmp"),
-						},
-					},
-					Spec: &corev1.PodSpecArgs{
-						Volumes: corev1.VolumeArray{
-							&corev1.VolumeArgs{
-								Name: pulumi.String("test-volume"),
-								HostPath: &corev1.HostPathVolumeSourceArgs{
-									Path: pulumi.String("/tmp"),
-									Type: pulumi.String("DirectoryOrCreate"),
-								},
-							},
-						},
-						ImagePullSecrets: corev1.LocalObjectReferenceArray{
-							&corev1.LocalObjectReferenceArgs{
-								Name: pulumi.String("container-registry"),
-							},
-						},
-						Containers: corev1.ContainerArray{
-							&corev1.ContainerArgs{
-								Name:  pulumi.String(appName),
-								Image: pulumi.String("reg.technicalonions.de/media-service:latest"),
-								Env: corev1.EnvVarArray{
-									&corev1.EnvVarArgs{
-										Name:  pulumi.String("PORT"),
-										Value: pulumi.String(strconv.Itoa(appPort)),
-									},
-									&corev1.EnvVarArgs{
-										Name:  pulumi.String("DAPR_PUBSUB_NAME"),
-										Value: pulumi.String("pubsub"),
-									},
-									&corev1.EnvVarArgs{
-										Name:  pulumi.String("DAPR_TOPIC_NAME"),
-										Value: pulumi.String("media"),
-									},
-									&corev1.EnvVarArgs{
-										Name:  pulumi.String("DAPR_S3_BINDING_NAME"),
-										Value: pulumi.String("s3"),
-									},
-								},
-								Ports: corev1.ContainerPortArray{
-									&corev1.ContainerPortArgs{
-										ContainerPort: pulumi.Int(8080),
-									},
-								},
-								ImagePullPolicy: pulumi.String("Always"),
-								VolumeMounts: corev1.VolumeMountArray{
-									&corev1.VolumeMountArgs{
-										MountPath: pulumi.String("/tmp"),
-										Name:      pulumi.String("test-volume"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})*/
 }
