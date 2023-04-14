@@ -12,22 +12,20 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 )
 
 var (
-	FfmpegExecutable    = "./ffmpeg"
-	CwebpExecutable     = "./cwebp"
-	Gif2webpExecutable  = "./gif2webp"
-	mediaServiceAddress = getEnvVar("MEDIA_SERVICE", "http://localhost:8083")
-	s3Endpoint          = getEnvVar("S3_ENDPOINT", "localhost:9000")
-	s3Id                = getEnvVar("S3_ACCESS_KEY", "minioadmin")
-	s3Secret            = getEnvVar("S3_SECRET_KEY", "minioadmin")
-	s3Token             = getEnvVar("S3_TOKEN", "")
-	s3Bucket            = getEnvVar("S3_BUCKET", "testbucket")
+	FfmpegExecutable   = "./ffmpeg"
+	CwebpExecutable    = "./cwebp"
+	Gif2webpExecutable = "./gif2webp"
+	s3Endpoint         = getEnvVar("S3_ENDPOINT", "localhost:9000")
+	s3Id               = getEnvVar("S3_ACCESS_KEY", "minioadmin")
+	s3Secret           = getEnvVar("S3_SECRET_KEY", "minioadmin")
+	s3Token            = getEnvVar("S3_TOKEN", "")
+	s3Bucket           = getEnvVar("S3_BUCKET", "testbucket")
 )
 
 func getEnvVar(key, fallbackValue string) string {
@@ -79,16 +77,18 @@ func MediaConversion(mediaEvent MediaEvent, logger *zap.Logger) error {
 
 	id, extension := getMediaIdComponents(mediaEvent.MediaId)
 
-	// TODO: Could do tracing here with traceparent
-	response, err := http.Get(fmt.Sprintf("%s/media/%s", mediaServiceAddress, mediaEvent.MediaId))
+	client, err := minio.New(s3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(s3Id, s3Secret, s3Token),
+		Secure: false,
+	})
 	if err != nil {
-		logger.Error("error getting presigned url", zap.Error(err))
+		logger.Error("error creating minio client", zap.Error(err))
 		return err
 	}
 
-	err = writeToDisk(mediaEvent.MediaId, response.Body)
+	err = client.FGetObject(context.Background(), s3Bucket, mediaEvent.MediaId, mediaEvent.MediaId, minio.GetObjectOptions{})
 	if err != nil {
-		logger.Error("error writing to disk", zap.Error(err))
+		logger.Error("error downloading media", zap.Error(err))
 		return err
 	}
 
@@ -105,15 +105,6 @@ func MediaConversion(mediaEvent MediaEvent, logger *zap.Logger) error {
 			done <- FileOp{err: errors.New("unrecognized format")}
 		}
 	}()
-
-	client, err := minio.New(s3Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(s3Id, s3Secret, s3Token),
-		Secure: false,
-	})
-	if err != nil {
-		logger.Error("error creating minio client", zap.Error(err))
-		return err
-	}
 
 	logger.Debug("Waiting for conversion")
 	fileOp := <-done
@@ -161,23 +152,6 @@ func upload(client *minio.Client, fileOp FileOp) error {
 		return err
 	}
 
-	return nil
-}
-
-func writeToDisk(path string, reader io.Reader) error {
-	input, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(input, reader)
-	if err != nil {
-		return err
-	}
-
-	err = input.Close()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
