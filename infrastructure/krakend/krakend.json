@@ -1,0 +1,110 @@
+{
+  "$schema": "https://www.krakend.io/schema/v3.json",
+  "version": 3,
+  "name": "KrakenD - API Gateway",
+  "extra_config": {
+    "telemetry/metrics": {
+      "collection_time": "60s",
+      "proxy_disabled": false,
+      "router_disabled": false,
+      "backend_disabled": false,
+      "endpoint_disabled": false,
+      "listen_address": ":8090"
+    },
+    "router": {
+      "return_error_msg": true
+    }
+  },
+  "timeout": "3000ms",
+  "cache_ttl": "300s",
+  "output_encoding": "json",
+  "endpoints": [
+    {
+      "endpoint": "/media/{media-id}",
+      "method": "GET",
+      "output_encoding": "json",
+      "backend": [
+        {
+          "url_pattern": "/v1.0/invoke/media-service/method/media/{media-id}",
+          "encoding": "json",
+          "sd": "static",
+          "method": "GET",
+          "host": [
+            "http://localhost:3500"
+          ],
+          "disable_host_sanitize": false
+        }
+      ]
+    },
+    {
+      "endpoint": "/statuses/{status-id}",
+      "extra_config": {
+        "auth/validator": {
+          "alg": "HS256",
+          "jwk_local_path": "/usr/jwk_private_key.json",
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            [
+              "Sub",
+              "X-user"
+            ]
+          ]
+        }
+      },
+      "method": "GET",
+      "output_encoding": "json",
+      "backend": [
+        {
+          "url_pattern": "/v1.0/invoke/status-service/method/statuses/{status-id}",
+          "encoding": "json",
+          "sd": "static",
+          "method": "GET",
+          "host": [
+            "http://localhost:3500"
+          ],
+          "disable_host_sanitize": false,
+          "extra_config": {
+            "backend/http": {
+              "return_error_code": true
+            }
+          }
+        }
+      ],
+      "input_headers": [
+        "X-user"
+      ]
+    },
+    {
+      "endpoint": "/login",
+      "method": "GET",
+      "output_encoding": "json",
+      "backend": [
+        {
+          "url_pattern": "/v1.0/invoke/login-service/method/login",
+          "encoding": "json",
+          "sd": "static",
+          "method": "POST",
+          "host": [
+            "http://localhost:3500"
+          ],
+          "disable_host_sanitize": false
+        }
+      ],
+      "extra_config": {
+        "auth/signer": {
+          "alg": "HS256",
+          "jwk_local_path": "/usr/jwk_private_key.json",
+          "disable_jwk_security": true,
+          "keys_to_sign": [
+            "access_token"
+          ],
+          "kid": "sim2"
+        }
+      }
+    }
+  ],
+  "plugin": {
+    "pattern": ".so",
+    "folder": "/opt/krakend/plugins/"
+  }
+}

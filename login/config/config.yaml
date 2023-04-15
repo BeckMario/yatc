@@ -1,0 +1,3 @@
+port: "8084"
+dapr:
+  http-port: "3504"

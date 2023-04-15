@@ -7,7 +7,6 @@ import (
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
-	networkingv1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/networking/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
@@ -31,7 +30,6 @@ func main() {
 	mediaService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	mediaService.AddContainerEnv("DAPR_TOPIC_NAME", "media")
 	mediaService.AddContainerEnv("DAPR_S3_BINDING_NAME", "s3")
-	mediaService.AddContainerEnv("NEWBUILD", "3")
 	services = append(services, mediaService)
 
 	timelineService := NewService("timeline", 8082, 8082, false)
@@ -49,6 +47,16 @@ func main() {
 	userService := NewService("user", 8080, 8080, false)
 	userService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, userService)
+
+	krakendGateway := NewService("krakend", 8080, 8080, false)
+	krakendGateway.AddContainerCommands("/usr/bin/krakend")
+	krakendGateway.AddContainerArgs("run", "-d", "-c", "/etc/krakend/krakend.json", "-p", "8080")
+	krakendGateway.AddContainerEnv("KRAKEND_PORT", "8080")
+	krakendGateway.nodePort = pulumi.Int(30442)
+	services = append(services, krakendGateway)
+
+	loginService := NewService("login", 8084, 8084, false)
+	services = append(services, loginService)
 
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
@@ -283,115 +291,6 @@ func main() {
 			}
 		}
 
-		ingress, err := yaml.NewConfigFile(ctx, "nginx-kind-ingress", &yaml.ConfigFileArgs{
-			File: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml",
-		})
-		if err != nil {
-			return err
-		}
-
-		_, err = networkingv1.NewIngress(ctx, "ingress", &networkingv1.IngressArgs{
-			ApiVersion: pulumi.String("networking.k8s.io/v1"),
-			Kind:       pulumi.String("Ingress"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Annotations: pulumi.StringMap{
-					"nginx.ingress.kubernetes.io/rewrite-target":  pulumi.String(fmt.Sprintf("/$2")),
-					"nginx.ingress.kubernetes.io/proxy-body-size": pulumi.String("1g"),
-				},
-			},
-			Spec: &networkingv1.IngressSpecArgs{
-				Rules: networkingv1.IngressRuleArray{
-					&networkingv1.IngressRuleArgs{
-						Http: &networkingv1.HTTPIngressRuleValueArgs{
-							Paths: networkingv1.HTTPIngressPathArray{
-								&networkingv1.HTTPIngressPathArgs{
-									PathType: pulumi.String("Prefix"),
-									Path:     pulumi.String(fmt.Sprintf("/media-service(/|$)(.*)")),
-									Backend: &networkingv1.IngressBackendArgs{
-										Service: &networkingv1.IngressServiceBackendArgs{
-											Name: pulumi.String("media"),
-											Port: &networkingv1.ServiceBackendPortArgs{
-												Number: pulumi.Int(8083),
-											},
-										},
-									},
-								},
-								&networkingv1.HTTPIngressPathArgs{
-									PathType: pulumi.String("Prefix"),
-									Path:     pulumi.String(fmt.Sprintf("/user-service(/|$)(.*)")),
-									Backend: &networkingv1.IngressBackendArgs{
-										Service: &networkingv1.IngressServiceBackendArgs{
-											Name: pulumi.String("user"),
-											Port: &networkingv1.ServiceBackendPortArgs{
-												Number: pulumi.Int(8080),
-											},
-										},
-									},
-								},
-								&networkingv1.HTTPIngressPathArgs{
-									PathType: pulumi.String("Prefix"),
-									Path:     pulumi.String(fmt.Sprintf("/timeline-service(/|$)(.*)")),
-									Backend: &networkingv1.IngressBackendArgs{
-										Service: &networkingv1.IngressServiceBackendArgs{
-											Name: pulumi.String("timeline"),
-											Port: &networkingv1.ServiceBackendPortArgs{
-												Number: pulumi.Int(8082),
-											},
-										},
-									},
-								},
-								&networkingv1.HTTPIngressPathArgs{
-									PathType: pulumi.String("Prefix"),
-									Path:     pulumi.String(fmt.Sprintf("/status-service(/|$)(.*)")),
-									Backend: &networkingv1.IngressBackendArgs{
-										Service: &networkingv1.IngressServiceBackendArgs{
-											Name: pulumi.String("status"),
-											Port: &networkingv1.ServiceBackendPortArgs{
-												Number: pulumi.Int(8081),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}, pulumi.DependsOn([]pulumi.Resource{ingress}))
-
-		_, err = networkingv1.NewIngress(ctx, "ingress-minio", &networkingv1.IngressArgs{
-			ApiVersion: pulumi.String("networking.k8s.io/v1"),
-			Kind:       pulumi.String("Ingress"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Namespace: minioNamespace.Metadata.Elem().Name().Elem(),
-				Annotations: pulumi.StringMap{
-					"nginx.ingress.kubernetes.io/proxy-body-size": pulumi.String("1g"),
-				},
-			},
-			Spec: &networkingv1.IngressSpecArgs{
-				Rules: networkingv1.IngressRuleArray{
-					&networkingv1.IngressRuleArgs{
-						Host: pulumi.String("minio-console.127.0.0.1.sslip.io"),
-						Http: &networkingv1.HTTPIngressRuleValueArgs{
-							Paths: networkingv1.HTTPIngressPathArray{
-								&networkingv1.HTTPIngressPathArgs{
-									PathType: pulumi.String("Prefix"),
-									Path:     pulumi.String("/"),
-									Backend: &networkingv1.IngressBackendArgs{
-										Service: &networkingv1.IngressServiceBackendArgs{
-											Name: pulumi.String("minio"),
-											Port: &networkingv1.ServiceBackendPortArgs{
-												Number: pulumi.Int(9001),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}, pulumi.DependsOn([]pulumi.Resource{ingress}))
 		return nil
 	})
 }

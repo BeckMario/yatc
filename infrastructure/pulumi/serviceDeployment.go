@@ -45,14 +45,42 @@ type Service struct {
 	appLabels    pulumi.StringMap
 	envs         map[string]string
 	sharedVolume bool
+	command      pulumi.StringArray
+	args         pulumi.StringArray
+	nodePort     pulumi.Int
 }
 
 func NewService(appName string, appPort int, outsidePort int, useSharedVolume bool) *Service {
 	appLabels := pulumi.StringMap{
 		"app": pulumi.String(appName),
 	}
-	return &Service{appName, pulumi.String(appName), pulumi.Int(appPort),
-		pulumi.Int(outsidePort), appLabels, make(map[string]string, 0), useSharedVolume}
+	return &Service{name: appName,
+		appName:      pulumi.String(appName),
+		appPort:      pulumi.Int(appPort),
+		outsidePort:  pulumi.Int(outsidePort),
+		appLabels:    appLabels,
+		envs:         make(map[string]string, 0),
+		sharedVolume: useSharedVolume}
+}
+
+func (service *Service) AddContainerCommands(cmds ...string) {
+	if service.command == nil {
+		service.command = make([]pulumi.StringInput, 0)
+	}
+
+	for _, cmd := range cmds {
+		service.command = append(service.command, pulumi.String(cmd))
+	}
+}
+
+func (service *Service) AddContainerArgs(args ...string) {
+	if service.args == nil {
+		service.args = make([]pulumi.StringInput, 0)
+	}
+
+	for _, arg := range args {
+		service.args = append(service.args, pulumi.String(arg))
+	}
 }
 
 func (service *Service) AddContainerEnv(key string, value string) {
@@ -150,6 +178,8 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 							ImagePullPolicy: pulumi.String("Always"),
 							Env:             service.getEnvVarArray(),
 							VolumeMounts:    volumeMounts,
+							Command:         service.command,
+							Args:            service.args,
 						},
 					},
 				},
@@ -159,6 +189,20 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 }
 
 func (service *Service) GetServiceArgs() *corev1.ServiceArgs {
+	var servicePort *corev1.ServicePortArgs
+	if service.nodePort != 0 {
+		servicePort = &corev1.ServicePortArgs{
+			NodePort:   service.nodePort,
+			Port:       service.outsidePort,
+			TargetPort: service.appPort,
+		}
+	} else {
+		servicePort = &corev1.ServicePortArgs{
+			Port:       service.outsidePort,
+			TargetPort: service.appPort,
+		}
+	}
+
 	return &corev1.ServiceArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Labels: service.appLabels,
@@ -169,10 +213,7 @@ func (service *Service) GetServiceArgs() *corev1.ServiceArgs {
 				"app": service.appName,
 			},
 			Ports: corev1.ServicePortArray{
-				&corev1.ServicePortArgs{
-					Port:       service.outsidePort,
-					TargetPort: service.appPort,
-				},
+				servicePort,
 			},
 			Type: pulumi.String("NodePort"),
 		},

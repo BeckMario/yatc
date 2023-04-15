@@ -27,7 +27,7 @@ type DaprConfig struct {
 }
 
 type StateStoreConfig struct {
-	Name string `yaml:"name" env:"DAPR_STATE_STORE_NAME" env-default:"pubsub"`
+	Name string `yaml:"name" env:"DAPR_STATE_STORE_NAME" env-default:"statestore"`
 }
 
 type PubSubConfig struct {

@@ -48,6 +48,10 @@ func (Run) Timeline() error {
 	return runDapr("timeline", 8081, 3501)
 }
 
+func (Run) Login() error {
+	return runDapr("login", 8084, 3504)
+}
+
 type component struct {
 	Metadata struct {
 		Name string `yaml:"name"`
