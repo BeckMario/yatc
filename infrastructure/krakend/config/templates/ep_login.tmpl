@@ -1,0 +1,24 @@
+{
+    "endpoint": "/login",
+    "method": "GET",
+    "output_encoding": "json",
+    "backend": [
+        {
+            "url_pattern": "{{.env.path_login}}/login",
+            "encoding": "json",
+            "sd": "static",
+            "method": "POST",
+            "host": ["{{.env.host_login}}"],
+            "disable_host_sanitize": false
+        }
+    ],
+    "extra_config": {
+        "auth/signer": {
+            "alg": "HS256",
+            "jwk_local_path": "/usr/jwk_private_key.json",
+            "disable_jwk_security": true,
+            "keys_to_sign": ["access_token"],
+            "kid": "sim2"
+        }
+    }
+},

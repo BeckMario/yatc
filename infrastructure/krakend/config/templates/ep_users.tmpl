@@ -1,0 +1,35 @@
+{{ range $idx, $endpoint := .endpoints.user}}
+{{ if $idx }},{{ end }}
+    {
+        "endpoint": "{{$endpoint.endpoint}}",
+        "method": "{{$endpoint.method}}",
+        "output_encoding": "json",
+        "backend": [
+          {
+            "host": [ "{{ $.env.host_user }}" ],
+            "url_pattern": "{{$.env.path_user}}{{$endpoint.endpoint}}",
+            "method": "{{$endpoint.method}}",
+            "encoding": "json",
+            "sd": "static",
+            "disable_host_sanitize": false,
+            "extra_config" : {
+                "backend/http": {
+                    "return_error_code": true
+                }
+            }
+          }
+        ],
+        "input_headers": [
+            {{ include "input_headers.tmpl" }}
+            {{ if $endpoint.protected}}
+            {{ include "jwt_input_headers.tmpl" }}
+            {{end}}
+        ]
+        {{ if $endpoint.protected}}
+        ,
+        "extra_config" : {
+            {{ include "jwt_validator.tmpl" }}
+        }
+        {{end}}
+    }
+{{ end }}

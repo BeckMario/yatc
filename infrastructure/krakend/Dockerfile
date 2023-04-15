@@ -1,3 +1,19 @@
+FROM devopsfaith/krakend:2.2.1 as builder
+
+COPY krakend.tmpl .
+COPY config .
+
+## Save temporary file to /tmp to avoid permission errors
+RUN FC_ENABLE=1 \
+    FC_OUT=/tmp/krakend.json \
+    FC_PARTIALS="/etc/krakend/partials" \
+    FC_SETTINGS="/etc/krakend/settings" \
+    FC_TEMPLATES="/etc/krakend/templates" \
+    krakend check -d -t -c krakend.tmpl
+
+# The linting needs the final krakend.json file
+RUN krakend check -c /tmp/krakend.json --lint
+
 FROM devopsfaith/krakend:2.2.1
-COPY krakend.json /etc/krakend/krakend.json
+COPY --from=builder --chown=krakend:nogroup /tmp/krakend.json .
 COPY jwk_private_key.json /usr/jwk_private_key.json
