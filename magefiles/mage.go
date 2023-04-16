@@ -116,7 +116,7 @@ func (b Build) Service(name string) error {
 }
 
 func (b Build) All() error {
-	services := []string{"status", "timeline", "media", "user"}
+	services := []string{"status", "timeline", "media", "user", "login", "krakend", "media-conversion"}
 	for _, service := range services {
 		err := b.Service(service)
 		if err != nil {

@@ -73,17 +73,17 @@ func TestApi_GetStatuses(t *testing.T) {
 	// THEN
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	var statusResponses []statuses.StatusResponse
-	err = json.NewDecoder(rr.Body).Decode(&statusResponses)
+	var statusesResponse statuses.StatusesResponse
+	err = json.NewDecoder(rr.Body).Decode(&statusesResponse)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 2, len(statusResponses))
-	assert.Equal(t, status1.Id, statusResponses[0].Id)
-	assert.Equal(t, status1.Content, statusResponses[0].Content)
-	assert.Equal(t, status1.UserId, statusResponses[0].UserId)
-	assert.Equal(t, status2.Id, statusResponses[1].Id)
-	assert.Equal(t, status2.Content, statusResponses[1].Content)
-	assert.Equal(t, status2.UserId, statusResponses[1].UserId)
+	assert.Equal(t, 2, len(statusesResponse.Statuses))
+	assert.Equal(t, status1.Id, statusesResponse.Statuses[0].Id)
+	assert.Equal(t, status1.Content, statusesResponse.Statuses[0].Content)
+	assert.Equal(t, status1.UserId, statusesResponse.Statuses[0].UserId)
+	assert.Equal(t, status2.Id, statusesResponse.Statuses[1].Id)
+	assert.Equal(t, status2.Content, statusesResponse.Statuses[1].Content)
+	assert.Equal(t, status2.UserId, statusesResponse.Statuses[1].UserId)
 }
 
 func TestApi_GetStatus(t *testing.T) {
