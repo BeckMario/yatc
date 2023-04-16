@@ -14,8 +14,20 @@ func NewStatusService(repo Repository, publisher Publisher) *Service {
 	return &Service{repo: repo, publisher: publisher}
 }
 
-func (statusService *Service) GetStatuses() ([]statuses.Status, error) {
-	return statusService.repo.List()
+func (statusService *Service) GetStatuses(userId uuid.UUID) ([]statuses.Status, error) {
+	list, err := statusService.repo.List()
+	if err != nil {
+		return nil, err
+	}
+
+	foundStatuses := make([]statuses.Status, 0)
+	for _, status := range list {
+		if status.UserId == userId {
+			foundStatuses = append(foundStatuses, status)
+		}
+	}
+
+	return foundStatuses, nil
 }
 
 func (statusService *Service) GetStatus(statusId uuid.UUID) (statuses.Status, error) {

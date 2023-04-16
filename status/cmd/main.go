@@ -1,33 +1,13 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	dapr "github.com/dapr/go-sdk/client"
-	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
-	"net/http"
 	"strconv"
 	"yatc/internal"
 	statuses "yatc/status/internal"
 )
-
-func ExtractUserId() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			userId := request.Header.Get("X-user")
-			fmt.Println(request.Header)
-			fmt.Println(userId)
-			if userId != "" {
-				ctx := context.WithValue(request.Context(), "userId", userId)
-				next.ServeHTTP(writer, request.WithContext(ctx))
-				return
-			}
-			next.ServeHTTP(writer, request)
-		})
-	}
-}
 
 func main() {
 	logger, _ := zap.NewDevelopment()
@@ -74,9 +54,7 @@ func main() {
 	}
 
 	server := internal.NewServer(logger, port)
-	server.Router.Route("/", func(r chi.Router) {
-		api.ConfigureRouter(r, ExtractUserId())
-	})
+	server.Router.Route("/", api.ConfigureRouter)
 
 	server.StartAndWait()
 }

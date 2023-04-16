@@ -11,7 +11,7 @@ type Status struct {
 }
 
 type Service interface {
-	GetStatuses() ([]Status, error)
+	GetStatuses(userId uuid.UUID) ([]Status, error)
 	GetStatus(statusId uuid.UUID) (Status, error)
 	CreateStatus(status Status) (Status, error)
 	DeleteStatus(statusId uuid.UUID) (Status, error)

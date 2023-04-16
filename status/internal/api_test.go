@@ -22,7 +22,7 @@ func NewMockService() *MockService {
 	return &MockService{}
 }
 
-func (service *MockService) GetStatuses() ([]statuses.Status, error) {
+func (service *MockService) GetStatuses(userId uuid.UUID) ([]statuses.Status, error) {
 	return service.statuses, nil
 }
 
@@ -54,14 +54,15 @@ func TestApi_GetStatuses(t *testing.T) {
 	// GIVEN
 	service := NewMockService()
 	api := NewStatusApi(service)
-	status1 := statuses.Status{Id: uuid.New(), Content: "test status 1", UserId: uuid.New()}
-	status2 := statuses.Status{Id: uuid.New(), Content: "test status 2", UserId: uuid.New()}
+	userId := uuid.New()
+	status1 := statuses.Status{Id: uuid.New(), Content: "test status 1", UserId: userId}
+	status2 := statuses.Status{Id: uuid.New(), Content: "test status 2", UserId: userId}
 	service.statuses = []statuses.Status{status1, status2}
 
 	router := chi.NewRouter()
 	api.ConfigureRouter(router)
 
-	req, err := http.NewRequest(http.MethodGet, "/statuses", nil)
+	req, err := http.NewRequest(http.MethodGet, "/users/"+userId.String()+"/statuses", nil)
 	assert.NoError(t, err)
 
 	rr := httptest.NewRecorder()
@@ -120,7 +121,7 @@ func TestApi_CreateStatus(t *testing.T) {
 	service := NewMockService()
 	api := NewStatusApi(service)
 	status := statuses.Status{Id: uuid.New(), Content: "test status", UserId: uuid.New()}
-	createStatusRequest := statuses.CreateStatusRequest{Content: status.Content, UserId: status.UserId}
+	createStatusRequest := statuses.CreateStatusRequest{Content: status.Content}
 	requestBody, err := json.Marshal(createStatusRequest)
 	assert.NoError(t, err)
 
@@ -130,6 +131,7 @@ func TestApi_CreateStatus(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "/statuses", bytes.NewReader(requestBody))
 	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-user", status.UserId.String())
 
 	rr := httptest.NewRecorder()
 

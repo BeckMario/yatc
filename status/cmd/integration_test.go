@@ -23,10 +23,11 @@ func Test_GetStatus(t *testing.T) {
 
 	createdStatus := statuses.CreateStatusRequest{
 		Content: "Test",
-		UserId:  uuid.New(),
 	}
+	userId := uuid.New()
+	params := statuses.CreateStatusParams{XUser: userId}
 
-	response, err := client.CreateStatusWithResponse(context.Background(), createdStatus)
+	response, err := client.CreateStatusWithResponse(context.Background(), &params, createdStatus)
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +39,7 @@ func Test_GetStatus(t *testing.T) {
 
 	statusResponse := *status.JSON200
 
-	assert.Equal(t, createdStatus.UserId, statusResponse.UserId)
+	assert.Equal(t, userId, statusResponse.UserId)
 	assert.Equal(t, createdStatus.Content, statusResponse.Content)
 	assert.Equal(t, response.JSON201.Id, statusResponse.Id)
 }

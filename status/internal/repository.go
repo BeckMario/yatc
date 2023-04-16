@@ -123,6 +123,10 @@ func (repo *DaprStateStoreRepo) List() ([]statuses.Status, error) {
 		return nil, err
 	}
 
+	if item.Value == nil {
+		return make([]statuses.Status, 0), nil
+	}
+
 	listOfKeys := make([]string, 0)
 	err = json.Unmarshal(item.Value, &listOfKeys)
 	if err != nil {
@@ -180,7 +184,14 @@ func (repo *DaprStateStoreRepo) Delete(statusId uuid.UUID) (statuses.Status, err
 	if err != nil {
 		return statuses.Status{}, err
 	}
-	return statuses.Status{}, nil
+
+	var status statuses.Status
+	err = json.Unmarshal(statusItem.Value, &status)
+	if err != nil {
+		return statuses.Status{}, err
+	}
+
+	return status, nil
 }
 
 func (repo *DaprStateStoreRepo) Create(status statuses.Status) (statuses.Status, error) {
