@@ -162,6 +162,7 @@ func UnitTest() error {
 }
 
 func StatusIntegrationTest() error {
+	//TODO: Doesnt work anymore :( dagger hangs
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
 		return err
@@ -204,13 +205,6 @@ func StatusComponentTest() error {
 	buildContainer := baseContainer.WithExec([]string{"go", "build", "-o", "build/status_service", "yatc/status/cmd"})
 	output := buildContainer.File("build/status_service")
 
-	// Postgres
-	postgres := client.Container().
-		From("postgres").
-		WithEnvVariable("POSTGRES_PASSWORD", "password").
-		WithExposedPort(5432).
-		WithExec(nil)
-
 	// Redis. Status Service needs Redis as Message Broker
 	redis := client.Container().
 		From("redis").
@@ -233,11 +227,9 @@ func StatusComponentTest() error {
 		WithExec([]string{"dapr", "init", "--slim"}).
 		// Prepare Service
 		WithMountedDirectory("/test-components", directory.Directory("./status/config/test-components")).
-		WithServiceBinding("db", postgres).
 		WithServiceBinding("redis", redis).
 		WithFile("status/config/config.yaml", directory.File("./status/config/config.yaml")).
 		WithFile("status_service", output).
-		WithEnvVariable("DATABASE", "postgres://postgres:password@db:5432/postgres?sslmode=disable").
 		// Run actual service with dapr sidecar
 		WithExec(runStatusWithDapr).
 		WithExposedPort(3500)
@@ -245,7 +237,7 @@ func StatusComponentTest() error {
 	integrationTest := baseContainer.
 		WithServiceBinding("status-dapr", status).
 		WithEnvVariable("STATUS_SERVICE_ADDR", "http://status-dapr:3500").
-		WithExec([]string{"go", "test", "-v", "status/cmd/integration_test.go"})
+		WithExec([]string{"go", "test", "-v", "status/cmd/component_test.go"})
 
 	stdout, err := integrationTest.Stdout(context.Background())
 	fmt.Println(stdout)
