@@ -21,14 +21,15 @@ func (b Build) krakend() error {
 	}
 	defer client.Close()
 
+	krakendImage := "reg.technicalonions.de/krakend-service:latest"
 	env := os.Getenv("ENV")
 	if env == "" {
 		env = "local"
+		krakendImage = "reg.technicalonions.de/krakend-service:local"
 	}
 
 	krakendDir := client.Host().Directory("./infrastructure/krakend")
 
-	krakendImage := "reg.technicalonions.de/krakend-service:latest"
 	_, err = krakendDir.DockerBuild(dagger.DirectoryDockerBuildOpts{
 		BuildArgs: []dagger.BuildArg{{Name: "ENV", Value: env}},
 	}).Publish(context.Background(), krakendImage)

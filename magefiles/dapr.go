@@ -60,7 +60,7 @@ func (Run) Krakend() error {
 	_ = sh.Run("docker", "stop", "krakend")
 
 	dockerArgs := []string{"--", "docker", "run", "--rm", "--name", "krakend",
-		"--network", "host", "--pull", "always", "reg.technicalonions.de/krakend-service:latest"}
+		"--network", "host", "--pull", "always", "reg.technicalonions.de/krakend-service:local"}
 
 	args := []string{"run"}
 	args = append(args, runDaprArgs(service, appPort, daprPort)...)
