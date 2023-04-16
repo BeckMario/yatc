@@ -38,7 +38,7 @@ func (Run) Status() error {
 // User Run service with dapr sidecar
 func (Run) User() error {
 	mg.Deps(mg.F(Generate.Service, "user", true))
-	return runDapr("user", 8080, 3502)
+	return runDapr("user", 8085, 3502)
 
 }
 

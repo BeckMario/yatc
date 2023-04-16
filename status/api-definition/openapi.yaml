@@ -44,6 +44,7 @@ paths:
       parameters:
         - in: header
           name: X-user
+          description: supplied from api gateway if authenticated, can be set manually locally.
           schema:
             type: string
             format: uuid

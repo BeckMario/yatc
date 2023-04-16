@@ -88,7 +88,14 @@ func (repo *DaprStateStoreRepo) Delete(userId uuid.UUID) (users.User, error) {
 	if err != nil {
 		return users.User{}, err
 	}
-	return users.User{}, nil
+
+	var user users.User
+	err = json.Unmarshal(userItem.Value, &user)
+	if err != nil {
+		return users.User{}, err
+	}
+
+	return user, nil
 }
 
 func (repo *DaprStateStoreRepo) Save(user users.User) (users.User, error) {

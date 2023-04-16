@@ -55,6 +55,13 @@ paths:
       summary: delete a user by id
       operationId: deleteUser
       parameters:
+        - in: header
+          name: X-user
+          description: supplied from api gateway if authenticated, can be set manually locally. Has to be equal to userId in path
+          schema:
+            type: string
+            format: uuid
+          required: true
         - name: userId
           in: path
           description: uuid of user
@@ -79,6 +86,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: header
+          name: X-user
+          description: supplied from api gateway if authenticated, can be set manually locally. Has to be equal to userId in path
+          schema:
+            type: string
+            format: uuid
+          required: true
       requestBody:
         content:
           application/json:
@@ -111,9 +125,8 @@ paths:
           content:
             application/json:
               schema:
-                type: array
                 items:
-                  $ref: '#/components/schemas/UserResponse'
+                  $ref: '#/components/schemas/UsersResponse'
   /users/{userId}/followers/{followerUserId}:
     delete:
       tags:
@@ -135,6 +148,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: header
+          name: X-user
+          description: supplied from api gateway if authenticated, can be set manually locally. Has to be equal to userId in path
+          schema:
+            type: string
+            format: uuid
+          required: true
       responses:
         '200':
           description: successful operation
@@ -158,9 +178,8 @@ paths:
             content:
               application/json:
                 schema:
-                  type: array
                   items:
-                    $ref: '#/components/schemas/UserResponse'
+                    $ref: '#/components/schemas/UsersResponse'
 components:
   schemas:
     UserResponse:
@@ -176,6 +195,14 @@ components:
         username:
           type: string
           example: AshKetchum
+    UsersResponse:
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
     CreateUserRequest:
       required:
         - username

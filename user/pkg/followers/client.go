@@ -95,8 +95,10 @@ func (client *FollowerClient) GetFollowees(ctx context.Context, userId uuid.UUID
 }
 
 func (client *FollowerClient) FollowUser(ctx context.Context, userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) (users.User, error) {
+	//TODO: Should somehow use JWT Here instead of header maybe, do request through api gateway? and api gateway pass-through Bearer token
 	body := api.FollowUserJSONRequestBody{Id: userWhichFollowsId}
-	response, err := client.httpClient.FollowUser(ctx, userToFollowId, body)
+	params := api.FollowUserParams{XUser: userToFollowId}
+	response, err := client.httpClient.FollowUser(ctx, userToFollowId, &params, body)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return users.User{}, clientError
@@ -110,7 +112,9 @@ func (client *FollowerClient) FollowUser(ctx context.Context, userToFollowId uui
 }
 
 func (client *FollowerClient) UnfollowUser(ctx context.Context, userToFollowId uuid.UUID, userWhichFollowsId uuid.UUID) error {
-	response, err := client.httpClient.UnfollowUser(ctx, userToFollowId, userWhichFollowsId)
+	//TODO: Should somehow use JWT Here instead of header maybe, do request through api gateway? and api gateway pass-through Bearer token
+	params := api.UnfollowUserParams{XUser: userToFollowId}
+	response, err := client.httpClient.UnfollowUser(ctx, userToFollowId, userWhichFollowsId, &params)
 	clientError := ToClientError(response, err)
 	if clientError != nil {
 		return clientError
