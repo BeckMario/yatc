@@ -1,4 +1,5 @@
 FROM devopsfaith/krakend:2.2.1 as builder
+ARG ENV=local
 
 COPY krakend.tmpl .
 COPY config .
@@ -7,7 +8,7 @@ COPY config .
 RUN FC_ENABLE=1 \
     FC_OUT=/tmp/krakend.json \
     FC_PARTIALS="/etc/krakend/partials" \
-    FC_SETTINGS="/etc/krakend/settings" \
+    FC_SETTINGS="/etc/krakend/settings/$ENV" \
     FC_TEMPLATES="/etc/krakend/templates" \
     krakend check -d -t -c krakend.tmpl
 

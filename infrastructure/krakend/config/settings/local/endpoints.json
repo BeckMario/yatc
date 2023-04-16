@@ -1,0 +1,80 @@
+{
+  "status": [
+    {
+      "endpoint": "/statuses",
+      "method": "POST",
+      "protected": true
+    },
+    {
+      "endpoint": "/users/{userId}/statuses",
+      "method": "GET",
+      "protected": true
+    },
+    {
+      "endpoint": "/statuses/{statusId}",
+      "method": "GET",
+      "protected": true
+    },
+    {
+      "endpoint": "/statuses/{statusId}",
+      "method": "DELETE",
+      "protected": true
+    }
+  ],
+  "user": [
+    {
+      "endpoint": "/users/{userId}/followers",
+      "method": "POST",
+      "protected": true
+    },
+    {
+      "endpoint": "/users/{userId}/followers",
+      "method": "GET",
+      "protected": true
+    },
+    {
+      "endpoint": "/users/{userId}/followees",
+      "method": "GET",
+      "protected": true
+    },
+    {
+      "endpoint": "/users/{userId}/followers/{followerUserId}",
+      "method": "DELETE",
+      "protected": true
+    },
+    {
+      "endpoint": "/users",
+      "method": "POST",
+      "protected": false
+    },
+    {
+      "endpoint": "/users/{userId}",
+      "method": "GET",
+      "protected": true
+    },
+    {
+      "endpoint": "/users/{userId}",
+      "method": "DELETE",
+      "protected": true
+    }
+  ],
+  "timeline": [
+    {
+      "endpoint": "/timelines/{userId}",
+      "method": "GET",
+      "protected": true
+    }
+  ],
+  "media": [
+    {
+      "endpoint": "/media",
+      "method": "POST",
+      "protected": true
+    },
+    {
+      "endpoint": "/media/{mediaId}",
+      "method": "GET",
+      "protected": true
+    }
+  ]
+}
