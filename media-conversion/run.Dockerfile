@@ -11,8 +11,6 @@ RUN apt-get update &&  \
 FROM openfunctiondev/buildpacks-run-go:v2.5.0-1.17
 USER root
 COPY --from=prepare --chown=cnb:cnb /usr/ffmpeg /workspace/ffmpeg
-#COPY --from=prepare --chown=cnb:cnb /usr/libwebp-1.2.0-linux-x86-64/include /workspace/include
-#COPY --from=prepare --chown=cnb:cnb /usr/libwebp-1.2.0-linux-x86-64/lib /workspace/lib
 COPY --from=prepare --chown=cnb:cnb /usr/libwebp-1.2.0-linux-x86-64/bin/cwebp /workspace/cwebp
 COPY --from=prepare --chown=cnb:cnb /usr/libwebp-1.2.0-linux-x86-64/bin/gif2webp /workspace/gif2webp
 # Libs needed for cwebp

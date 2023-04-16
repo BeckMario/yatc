@@ -32,7 +32,7 @@ func (Run) Media() error {
 // Status Run service with dapr sidecar
 func (Run) Status() error {
 	mg.Deps(mg.F(Generate.Service, "status", false))
-	return runDapr("status", 8082, 3500)
+	return runDapr("status", 8082, 3506)
 }
 
 // User Run service with dapr sidecar
@@ -50,6 +50,22 @@ func (Run) Timeline() error {
 
 func (Run) Login() error {
 	return runDapr("login", 8084, 3504)
+}
+
+func (Run) Krakend() error {
+	service := "krakend"
+	appPort := 8085
+	daprPort := 3505
+
+	_ = sh.Run("docker", "stop", "krakend")
+
+	dockerArgs := []string{"--", "docker", "run", "--rm", "--name", "krakend",
+		"--network", "host", "--pull", "always", "reg.technicalonions.de/krakend-service:latest"}
+
+	args := []string{"run"}
+	args = append(args, runDaprArgs(service, appPort, daprPort)...)
+	args = append(args, dockerArgs...)
+	return sh.RunWithV(nil, "dapr", args...)
 }
 
 type component struct {
