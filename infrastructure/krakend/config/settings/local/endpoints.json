@@ -74,7 +74,8 @@
     {
       "endpoint": "/media/{mediaId}",
       "method": "GET",
-      "protected": true
+      "protected": true,
+      "output_encoding": "no-op"
     }
   ]
 }

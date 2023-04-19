@@ -156,6 +156,7 @@ func (service *Service) GetDeploymentArgs() *appsv1.DeploymentArgs {
 						"dapr.io/enable-api-logging":                   pulumi.String("true"),
 						"dapr.io/log-level":                            pulumi.String("debug"),
 						"dapr.io/sidecar-liveness-probe-delay-seconds": pulumi.String("15"),
+						"dapr.io/http-max-request-size":                pulumi.String("1000"),
 						"dapr.io/volume-mounts-rw":                     volumeAnnotationValue,
 					},
 				},

@@ -3,7 +3,7 @@
     {
         "endpoint": "{{$endpoint.endpoint}}",
         "method": "{{$endpoint.method}}",
-        "output_encoding": "json",
+        "output_encoding": {{ if $endpoint.output_encoding}}"{{ $endpoint.output_encoding }}"{{ else }}"json"{{end}},
         "backend": [
           {
             "host": [ "{{ $.env.host_media }}" ],
@@ -18,6 +18,9 @@
                 }
             }
           }
+        ],
+        "input_query_strings": [
+            "compressed"
         ],
         "input_headers": [
             {{ include "input_headers.tmpl" }}
