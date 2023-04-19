@@ -25,38 +25,41 @@ type DockerConfig struct {
 }
 
 func main() {
-	services := make([]*Service, 0)
-	mediaService := NewService("media", 8083, 8083, true)
+	services := make([]Service, 0)
+	mediaService := NewDaprService("media", 8083, 8083, true)
 	mediaService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	mediaService.AddContainerEnv("DAPR_TOPIC_NAME", "media")
 	mediaService.AddContainerEnv("DAPR_S3_BINDING_NAME", "s3")
 	services = append(services, mediaService)
 
-	timelineService := NewService("timeline", 8082, 8082, false)
+	timelineService := NewDaprService("timeline", 8082, 8082, false)
 	timelineService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	timelineService.AddContainerEnv("DAPR_TOPIC_NAME", "status")
 	timelineService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, timelineService)
 
-	statusService := NewService("status", 8081, 8081, false)
+	statusService := NewDaprService("status", 8081, 8081, false)
 	statusService.AddContainerEnv("DAPR_PUBSUB_NAME", "pubsub")
 	statusService.AddContainerEnv("DAPR_TOPIC_NAME", "status")
 	statusService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, statusService)
 
-	userService := NewService("user", 8080, 8080, false)
+	userService := NewDaprService("user", 8080, 8080, false)
 	userService.AddContainerEnv("DAPR_STATE_STORE_NAME", "statestore")
 	services = append(services, userService)
 
-	krakendGateway := NewService("krakend", 8080, 8080, false)
+	krakendGateway := NewDaprService("krakend", 8080, 8080, false)
 	krakendGateway.AddContainerCommands("/usr/bin/krakend")
 	krakendGateway.AddContainerArgs("run", "-d", "-c", "/etc/krakend/krakend.json", "-p", "8080")
 	krakendGateway.AddContainerEnv("KRAKEND_PORT", "8080")
 	krakendGateway.nodePort = pulumi.Int(30442)
 	services = append(services, krakendGateway)
 
-	loginService := NewService("login", 8084, 8084, false)
+	loginService := NewDaprService("login", 8084, 8084, false)
 	services = append(services, loginService)
+
+	zipkinService := NewService("zipkin", 9411, 9411, "openzipkin/zipkin")
+	services = append(services, zipkinService)
 
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
@@ -231,6 +234,9 @@ func main() {
 				ImageCredentials: openfunctionv1.FunctionSpecImagecredentialsArgs{
 					Name: pulumi.String("container-registry")},
 				Serving: openfunctionv1.FunctionSpecServingArgs{
+					Annotations: pulumi.StringMap{
+						"dapr.io/config": pulumi.String("tracing"),
+					},
 					Runtime: pulumi.String("async"),
 					Inputs: openfunctionv1.FunctionSpecServingInputsArray{
 						&openfunctionv1.FunctionSpecServingInputsArgs{

@@ -15,6 +15,13 @@ type FollowerClient struct {
 	httpClient api.ClientInterface
 }
 
+func UserResponseToUser(userResponse api.UserResponse) users.User {
+	return users.User{
+		Id:   userResponse.Id,
+		Name: userResponse.Username,
+	}
+}
+
 func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
 	//TODO: Could use NewClientWithResponses
 	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
@@ -71,11 +78,19 @@ func (client *FollowerClient) GetFollowers(ctx context.Context, userId uuid.UUID
 	if clientError != nil {
 		return nil, clientError
 	}
-	var allUsers []users.User
-	err = render.DecodeJSON(response.Body, &allUsers)
+
+	var usersResponse api.UsersResponse
+	err = render.DecodeJSON(response.Body, &usersResponse)
 	if err != nil {
 		return nil, err
 	}
+
+	allUsers := make([]users.User, 0)
+	for _, user := range usersResponse.Users {
+		user := UserResponseToUser(user)
+		allUsers = append(allUsers, user)
+	}
+
 	return allUsers, nil
 }
 

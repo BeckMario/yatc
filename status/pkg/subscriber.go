@@ -60,8 +60,8 @@ func NewDaprStatusSubscriber(router chi.Router, logger *zap.Logger, config inter
 // Subscribe Currently there can only be one subscribe handler
 func (sub *DaprStatusSubscriber) Subscribe(handler func(ctx context.Context, status Status)) {
 	sub.router.Post(sub.route, func(w http.ResponseWriter, r *http.Request) {
+		//TODO: Do this in middleware of router
 		trace := r.Header.Get("Traceparent")
-
 		ctx := context.Background()
 		if trace != "" {
 			ctx = context.WithValue(ctx, internal.ContextKeyTraceParent, trace)
