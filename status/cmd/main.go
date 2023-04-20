@@ -10,11 +10,8 @@ import (
 )
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	zap.ReplaceGlobals(logger)
-	defer func(logger *zap.Logger) {
-		_ = logger.Sync()
-	}(logger)
+	logger, sync := internal.NewZapLogger()
+	defer sync(logger)
 
 	config := internal.NewConfig("status/config/config.yaml", logger)
 

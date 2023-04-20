@@ -304,6 +304,11 @@ func createDapr(ctx *pulumi.Context) (*helm.Chart, error) {
 		FetchArgs: &helm.FetchArgs{
 			Repo: pulumi.String("https://dapr.github.io/helm-charts/"),
 		},
+		Values: pulumi.Map{
+			"global": pulumi.Map{
+				"logAsJson": pulumi.Bool(true),
+			},
+		},
 	}, pulumi.DependsOn([]pulumi.Resource{daprNamespace}), pulumi.Transformations([]pulumi.ResourceTransformation{
 		// Source: https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/#helm-charts
 		// Ignore changes that will be overwritten by the kruise-manager deployment.
@@ -394,5 +399,43 @@ func createDaprMonitoring(ctx *pulumi.Context) error {
 	if err != nil {
 		return err
 	}
+
+	_, err = helm.NewChart(ctx, "elasticsearch", helm.ChartArgs{
+		Version:   pulumi.String("7.17.3"),
+		Chart:     pulumi.String("elasticsearch"),
+		Namespace: daprMonitoring.Metadata.Elem().Name().Elem(),
+		FetchArgs: &helm.FetchArgs{
+			Repo: pulumi.String("https://helm.elastic.co"),
+		},
+		Values: pulumi.Map{
+			"replicas": pulumi.Int(1),
+			"persistence": pulumi.Map{
+				"enabled": pulumi.Bool(false),
+			},
+		},
+	}, pulumi.DependsOn([]pulumi.Resource{daprMonitoring}))
+	if err != nil {
+		return err
+	}
+
+	_, err = helm.NewChart(ctx, "kibana", helm.ChartArgs{
+		Version:   pulumi.String("7.17.3"),
+		Chart:     pulumi.String("kibana"),
+		Namespace: daprMonitoring.Metadata.Elem().Name().Elem(),
+		FetchArgs: &helm.FetchArgs{
+			Repo: pulumi.String("https://helm.elastic.co"),
+		},
+	}, pulumi.DependsOn([]pulumi.Resource{daprMonitoring}))
+	if err != nil {
+		return err
+	}
+
+	_, err = yaml.NewConfigGroup(ctx, "logging-components", &yaml.ConfigGroupArgs{
+		Files: []string{filepath.Join("logging-components", "*.yaml")},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

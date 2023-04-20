@@ -28,11 +28,8 @@ type user struct {
 }
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	zap.ReplaceGlobals(logger)
-	defer func(logger *zap.Logger) {
-		_ = logger.Sync()
-	}(logger)
+	logger, sync := internal.NewZapLogger()
+	defer sync(logger)
 
 	config := internal.NewConfig("login/config/config.yaml", logger)
 

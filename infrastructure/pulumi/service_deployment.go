@@ -71,6 +71,11 @@ func (service *DaprService) getEnvVarArray() corev1.EnvVarArray {
 		Value: portStringOutput,
 	})
 
+	array = append(array, &corev1.EnvVarArgs{
+		Name:  pulumi.String("LOGGER"),
+		Value: pulumi.String("JSON"),
+	})
+
 	return array
 }
 
@@ -125,6 +130,7 @@ func (service *DaprService) GetDeploymentArgs() *appsv1.DeploymentArgs {
 						"dapr.io/http-max-request-size":                pulumi.String("1000"),
 						"dapr.io/volume-mounts-rw":                     volumeAnnotationValue,
 						"dapr.io/config":                               pulumi.String("tracing"),
+						"dapr.io/log-as-json":                          pulumi.String("true"),
 					},
 				},
 				Spec: &corev1.PodSpecArgs{

@@ -36,7 +36,14 @@ func getEnvVar(key, fallbackValue string) string {
 }
 
 func HandleMessage(ofctx ofctx.Context, in []byte) (ofctx.Out, error) {
-	logger, _ := zap.NewDevelopment()
+	var logger *zap.Logger
+	environment := os.Getenv("ENV")
+	if environment == "PROD" {
+		logger, _ = zap.NewProduction()
+	} else {
+		logger, _ = zap.NewDevelopment()
+	}
+	zap.ReplaceGlobals(logger)
 	defer func(logger *zap.Logger) {
 		_ = logger.Sync()
 	}(logger)
