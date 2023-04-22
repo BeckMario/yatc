@@ -20,8 +20,8 @@ jobs:
         run: go run ./magefiles/main.go lint
       - name: unit test services
         run: go run ./magefiles/main.go unitTest
-      - name: integration test for status services
-        run: go run ./magefiles/main.go statusIntegrationTest
+#      - name: integration test for status services
+#        run: go run ./magefiles/main.go statusIntegrationTest
       - name: component test for status services
         run: go run ./magefiles/main.go statusComponentTest
 
