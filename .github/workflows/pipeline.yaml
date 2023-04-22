@@ -4,13 +4,32 @@ on:
     branches: [master]
 
 jobs:
-  test:
-    name: unit test servies
+  pipeline:
+    name: pipeline for all services
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '1.20'
-      - name: Run Dagger pipeline
+
+      - name: generate server and client with oapi gen
+        run: go run ./magefiles/main.go generate:all
+
+      - name: lint go code
+        run: go run ./magefiles/main.go lint
+      - name: unit test services
         run: go run ./magefiles/main.go unitTest
+      - name: integration test for status services
+        run: go run ./magefiles/main.go statusIntegrationTest
+      - name: component test for status services
+        run: go run ./magefiles/main.go statusComponentTest
+
+      - uses: docker/login-action@v2
+        with:
+          registry: reg.technicalonions.de
+          username: ${{ secrets.REG_USERNAME }}
+          password: ${{ secrets.REG_PASSWORD }}
+
+      - name: build and publish all services
+        run: go run ./magefiles/main.go build:all
