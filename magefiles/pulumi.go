@@ -41,7 +41,7 @@ func getPulumiBase(client *dagger.Client) (*dagger.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	expression := regexp.MustCompile("https://127.0.0.1:\\d+")
+	expression := regexp.MustCompile(`https://127.0.0.1:\d+`)
 	newFileBytes := expression.ReplaceAll(fileBytes, []byte("https://yatc-control-plane:6443"))
 
 	return client.Container().From("pulumi/pulumi-go").

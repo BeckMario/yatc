@@ -31,5 +31,8 @@ jobs:
           username: ${{ secrets.REG_USERNAME }}
           password: ${{ secrets.REG_PASSWORD }}
 
+      - uses: buildpacks/github-actions/setup-pack@v5.0.0
       - name: build and publish all services
         run: go run ./magefiles/main.go build:all
+        env:
+          ENV: "dev"
