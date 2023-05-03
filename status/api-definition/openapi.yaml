@@ -114,6 +114,11 @@ components:
           type: string
           format: uuid
           example: user which creates the status
+        mediaIds:
+          type: array
+          items:
+            type: string
+            format: uuid
     CreateStatusRequest:
       type: object
       required:
@@ -122,6 +127,11 @@ components:
         content:
           type: string
           example: status content
+        mediaIds:
+          type: array
+          items:
+            type: string
+            format: uuid
     StatusesResponse:
       type: object
       required:

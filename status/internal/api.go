@@ -16,10 +16,16 @@ type Api struct {
 }
 
 func StatusFromCreateStatusRequest(request statuses.CreateStatusRequest, userId uuid.UUID) statuses.Status {
+	mediaIds := make([]uuid.UUID, 0)
+	if request.MediaIds != nil {
+		mediaIds = *request.MediaIds
+	}
+
 	return statuses.Status{
-		Id:      uuid.New(),
-		Content: request.Content,
-		UserId:  userId,
+		Id:       uuid.New(),
+		Content:  request.Content,
+		UserId:   userId,
+		MediaIds: mediaIds,
 	}
 }
 
