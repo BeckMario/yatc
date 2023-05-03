@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:6
+    container_name: dapr_redis
+    ports:
+      - "6379:6379"
+  minio:
+    image: quay.io/minio/minio
+    container_name: dapr_minio
+    volumes:
+      - ./s3_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: dapr_zipkin
+    ports:
+      - "9411:9411"
+# TODO: Could add Prometheus and Fluentd/Elasticsearch here

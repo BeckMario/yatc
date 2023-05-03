@@ -25,3 +25,7 @@ go.work
 
 # Dapr
 .dapr
+
+!infrastructure/local/s3_data
+infrastructure/local/s3_data/*
+!infrastructure/local/s3_data/.gitkeep
