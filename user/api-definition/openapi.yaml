@@ -4,7 +4,7 @@ info:
   description: Users
   version: "1"
 servers:
-  - url: https://example
+  - url: http://localhost:8085/v1
 tags:
   - name: followers
   - name: users

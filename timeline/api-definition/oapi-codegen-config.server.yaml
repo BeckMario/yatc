@@ -1,8 +1,0 @@
-package: timelines
-generate:
-  chi-server: true
-  embedded-spec: true
-  models: true
-import-mapping:
-  ../../status/api-definition/openapi.yaml: yatc/status/pkg
-output: ./timeline/internal/timelineapi.gen.go

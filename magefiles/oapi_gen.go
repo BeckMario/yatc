@@ -10,21 +10,98 @@ import (
 	"github.com/magefile/mage/target"
 	"gopkg.in/yaml.v3"
 	"os"
-	"yatc/internal"
 )
 
 type Generate mg.Namespace
 
-type oapiGenPaths struct {
-	dir              string
-	oapiServerConfig string
-	serverOutput     string
-	oapiClientConfig *string
-	clientOutput     *string
-	openapi          string
+type oapiGen struct {
+	dir       string
+	oapiPaths []paths
 }
-type oapiConfig struct {
-	Output string `yaml:"output"`
+
+type paths struct {
+	dir          string
+	serverConfig config
+	clientConfig *config
+	spec         string
+}
+
+type config struct {
+	path   string
+	output string
+}
+
+func checkForVersions(apiDir string) bool {
+	openapi := fmt.Sprintf("%s/openapi.yaml", apiDir)
+	_, err := os.Stat(openapi)
+	return os.IsNotExist(err)
+}
+
+func getVersions(apiDir string) ([]string, error) {
+	dirEntries, err := os.ReadDir(apiDir)
+	if err != nil {
+		return nil, err
+	}
+	dirs := make([]string, 0)
+	for _, entry := range dirEntries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+	return dirs, nil
+}
+
+func newPaths(dir string, hasClient bool) (paths, error) {
+	spec := fmt.Sprintf("%s/openapi.yaml", dir)
+	serverConfigPath := fmt.Sprintf("%s/oapi-codegen-config.server.yaml", dir)
+	clientConfigPath := fmt.Sprintf("%s/oapi-codegen-config.client.yaml", dir)
+
+	serverConfig, err := newOapiConfig(serverConfigPath)
+	if err != nil {
+		return paths{}, err
+	}
+
+	var clientConfig *config
+	if hasClient {
+		c, err := newOapiConfig(clientConfigPath)
+		clientConfig = &c
+		if err != nil {
+			return paths{}, err
+		}
+	}
+
+	return paths{dir, serverConfig, clientConfig, spec}, nil
+}
+
+func newOapiGen(service string, hasClient bool) (oapiGen, error) {
+	apiDir := fmt.Sprintf("%s/api-definition", service)
+
+	oapiPaths := make([]paths, 0)
+
+	if checkForVersions(apiDir) {
+		versions, err := getVersions(apiDir)
+		if err != nil {
+			return oapiGen{}, err
+		}
+
+		for _, version := range versions {
+			dir := fmt.Sprintf("%s/%s", apiDir, version)
+			paths, err := newPaths(dir, hasClient)
+			if err != nil {
+				return oapiGen{}, err
+			}
+			oapiPaths = append(oapiPaths, paths)
+		}
+	} else {
+		paths, err := newPaths(apiDir, hasClient)
+		if err != nil {
+			return oapiGen{}, err
+		}
+		oapiPaths = append(oapiPaths, paths)
+	}
+
+	return oapiGen{apiDir, oapiPaths}, nil
+
 }
 
 func oapiCodeGenBase(client *dagger.Client) *dagger.Container {
@@ -35,63 +112,36 @@ func oapiCodeGenBase(client *dagger.Client) *dagger.Container {
 		WithWorkdir("/app")
 }
 
-func newOapiConfig(path string) (*oapiConfig, error) {
+func newOapiConfig(path string) (config, error) {
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return config{}, err
 	}
 
-	var config oapiConfig
-	err = yaml.Unmarshal(bytes, &config)
+	var oapiConfig struct {
+		Output string `yaml:"output"`
+	}
+	err = yaml.Unmarshal(bytes, &oapiConfig)
 	if err != nil {
-		return nil, err
+		return config{}, err
 	}
 
-	return &config, nil
-}
-
-func newOapiGenPaths(service string, hasClient bool) (*oapiGenPaths, error) {
-	dir := fmt.Sprintf("%s/api-definition", service)
-	openapi := fmt.Sprintf("%s/openapi.yaml", dir)
-
-	oapiServerConfig := fmt.Sprintf("%s/oapi-codegen-config.server.yaml", dir)
-	config, err := newOapiConfig(oapiServerConfig)
-	if err != nil {
-		return nil, err
-	}
-	serverOutput := config.Output
-
-	var oapiClientConfig *string
-	var clientOutput *string
-	if hasClient {
-		oapiClientConfig = internal.Ptr(fmt.Sprintf("%s/oapi-codegen-config.client.yaml", dir))
-		config, err := newOapiConfig(*oapiClientConfig)
-		if err != nil {
-			return nil, err
-		}
-		clientOutput = &config.Output
-	}
-
-	return &oapiGenPaths{
-		dir,
-		oapiServerConfig,
-		serverOutput,
-		oapiClientConfig,
-		clientOutput,
-		openapi,
+	return config{
+		path:   path,
+		output: oapiConfig.Output,
 	}, nil
 }
 
-func (paths *oapiGenPaths) hasBeenModified() (bool, error) {
-	serverChange, err := target.Dir(paths.serverOutput, paths.dir)
-	fmt.Printf("Source %s Destination %s modification? %t\n", paths.dir, paths.serverOutput, serverChange)
+func (paths *paths) hasBeenModified() (bool, error) {
+	serverChange, err := target.Dir(paths.serverConfig.output, paths.dir)
+	fmt.Printf("Source %s Destination %s modification? %t\n", paths.dir, paths.serverConfig.output, serverChange)
 	if err != nil {
 		return true, err
 	}
 
-	if paths.clientOutput != nil {
-		clientChange, err := target.Dir(*paths.clientOutput, paths.dir)
-		fmt.Printf("Source %s Destination %s modification? %t\n", paths.dir, *paths.clientOutput, clientChange)
+	if paths.clientConfig != nil {
+		clientChange, err := target.Dir((*paths.clientConfig).output, paths.dir)
+		fmt.Printf("Source %s Destination %s modification? %t\n", paths.dir, (*paths.clientConfig).output, clientChange)
 
 		if err != nil {
 			return true, err
@@ -102,35 +152,44 @@ func (paths *oapiGenPaths) hasBeenModified() (bool, error) {
 	return serverChange, nil
 }
 
-func (paths *oapiGenPaths) generate(client *dagger.Client) error {
-	if paths.oapiClientConfig != nil {
-		content, err := oapiCodeGenBase(client).
-			WithExec([]string{"oapi-codegen", "-config", *paths.oapiClientConfig, paths.openapi}).
-			File(*paths.clientOutput).
-			Contents(context.Background())
+func (oapiGen *oapiGen) generate(client *dagger.Client) error {
+	for _, paths := range oapiGen.oapiPaths {
+		modified, err := paths.hasBeenModified()
 		if err != nil {
-			return fmt.Errorf("api generate failed: %w", err)
+			return err
 		}
 
-		err = os.WriteFile(*paths.clientOutput, []byte(content), 0o600)
-		if err != nil {
-			return fmt.Errorf("api generate failed: %w", err)
+		if modified {
+			fmt.Println("Generate with oapi-codegen")
+			if paths.clientConfig != nil {
+				content, err := oapiCodeGenBase(client).
+					WithExec([]string{"oapi-codegen", "-config", (*paths.clientConfig).path, paths.spec}).
+					File((*paths.clientConfig).output).
+					Contents(context.Background())
+				if err != nil {
+					return fmt.Errorf("api generate failed: %w", err)
+				}
+
+				err = os.WriteFile((*paths.clientConfig).output, []byte(content), 0o600)
+				if err != nil {
+					return fmt.Errorf("api generate failed: %w", err)
+				}
+			}
+
+			content, err := oapiCodeGenBase(client).
+				WithExec([]string{"oapi-codegen", "-config", paths.serverConfig.path, paths.spec}).
+				File(paths.serverConfig.output).
+				Contents(context.Background())
+			if err != nil {
+				return fmt.Errorf("api generate failed: %w", err)
+			}
+
+			err = os.WriteFile(paths.serverConfig.output, []byte(content), 0o600)
+			if err != nil {
+				return fmt.Errorf("api generate failed: %w", err)
+			}
 		}
 	}
-
-	content, err := oapiCodeGenBase(client).
-		WithExec([]string{"oapi-codegen", "-config", paths.oapiServerConfig, paths.openapi}).
-		File(paths.serverOutput).
-		Contents(context.Background())
-	if err != nil {
-		return fmt.Errorf("api generate failed: %w", err)
-	}
-
-	err = os.WriteFile(paths.serverOutput, []byte(content), 0o600)
-	if err != nil {
-		return fmt.Errorf("api generate failed: %w", err)
-	}
-
 	return nil
 }
 
@@ -142,20 +201,14 @@ func (Generate) Service(service string, needsClient bool) error {
 	}
 	defer client.Close()
 
-	openapi, err := newOapiGenPaths(service, needsClient)
-	if err != nil {
-		return err
-	}
-	modified, err := openapi.hasBeenModified()
+	openapi, err := newOapiGen(service, needsClient)
 	if err != nil {
 		return err
 	}
 
-	if modified {
-		fmt.Println("Generate with oapi-codegen")
-		if err := openapi.generate(client); err != nil {
-			return err
-		}
+	err = openapi.generate(client)
+	if err != nil {
+		return err
 	}
 
 	return nil

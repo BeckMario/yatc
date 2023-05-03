@@ -8,6 +8,8 @@ import (
 	"yatc/internal"
 	"yatc/status/pkg"
 	"yatc/timeline/internal"
+	timelines_v1 "yatc/timeline/internal/v1"
+	timelines_v2 "yatc/timeline/internal/v2"
 	"yatc/user/pkg/followers"
 )
 
@@ -26,7 +28,8 @@ func main() {
 	repo := timelines.NewDaprRepo(client, config.Dapr.StateStore) //timelines.NewInMemoryRepo()
 	followerClient := followers.NewFollowerClient(config.Dapr)
 	service := timelines.NewTimelineService(repo, followerClient)
-	api := timelines.NewTimelineApi(service)
+	apiv1 := timelines_v1.NewTimelineApi(service)
+	apiv2 := timelines_v2.NewTimelineApi(service)
 
 	port, err := strconv.Atoi(config.Port)
 	if err != nil {
@@ -34,7 +37,8 @@ func main() {
 	}
 	server := internal.NewServer(logger, port)
 
-	server.Router.Route("/", api.ConfigureRouter)
+	server.Router.Route("/", apiv1.ConfigureRouter)
+	server.Router.Route("/v2/", apiv2.ConfigureRouter)
 
 	subscriber := statuses.NewDaprStatusSubscriber(server.Router, logger, config.Dapr.PubSub)
 	subscriber.Subscribe(func(ctx context.Context, status statuses.Status) {

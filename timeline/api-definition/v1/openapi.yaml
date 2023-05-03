@@ -4,7 +4,7 @@ info:
   description: Timeline
   version: "1"
 servers:
-  - url: 'http://localhost:8082'
+  - url: http://localhost:8081/v1
 tags:
   - name: timeline
 paths:
@@ -45,4 +45,4 @@ components:
         statuses:
           type: array
           items:
-            $ref: '../../status/api-definition/openapi.yaml#/components/schemas/StatusResponse'
+            $ref: '../../../status/api-definition/openapi.yaml#/components/schemas/StatusResponse'

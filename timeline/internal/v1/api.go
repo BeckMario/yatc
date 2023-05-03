@@ -1,4 +1,4 @@
-package timelines
+package timelines_v1
 
 import (
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
@@ -22,8 +22,9 @@ func (api *Api) ConfigureRouter(router chi.Router) {
 		ChiServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			internal.ReplyWithError(w, r, err, http.StatusBadRequest)
 		}})
-
-	router.Mount("/", handler)
+	router.Group(func(r chi.Router) {
+		r.Mount("/", handler)
+	})
 }
 
 func TimelineResponseFromTimeline(timeline timelines.Timeline) TimelineResponse {

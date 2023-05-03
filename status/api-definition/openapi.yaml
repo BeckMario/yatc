@@ -4,7 +4,7 @@ info:
   description: Status
   version: "1"
 servers:
-  - url: http://localhost:8000
+  - url: http://localhost:8082/v1
 tags:
   - name: statuses
 paths:

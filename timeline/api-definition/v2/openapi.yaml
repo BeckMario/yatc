@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Timeline API
+  description: Timeline
+  version: "1"
+servers:
+  - url: http://localhost:8081/v2
+tags:
+  - name: timeline
+paths:
+  /timelines/{userId}:
+    get:
+      tags:
+        - timeline
+      summary: get a timeline by userId
+      operationId: getTimeline
+      parameters:
+        - name: userId
+          in: path
+          description: uuid of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineResponse'
+
+components:
+  schemas:
+    TimelineResponse:
+      type: object
+      required:
+        - id
+        - statuses
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 206fdb18-ebb2-4cba-98ee-1acdaf8b2855
+        statuses:
+          type: array
+          items:
+            $ref: '../../../status/api-definition/openapi.yaml#/components/schemas/StatusResponse'
