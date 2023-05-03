@@ -19,11 +19,11 @@ jobs:
       - name: lint go code
         run: go run ./magefiles/main.go lint
       - name: unit test services
-        run: go run ./magefiles/main.go unitTest
+        run: go run ./magefiles/main.go test:unit
 #      - name: integration test for status services
-#        run: go run ./magefiles/main.go statusIntegrationTest
+      #        run: go run ./magefiles/main.go test:integrationStatus
       - name: component test for status services
-        run: go run ./magefiles/main.go statusComponentTest
+        run: go run ./magefiles/main.go test:componentStatus
 
       - uses: docker/login-action@v2
         with:
