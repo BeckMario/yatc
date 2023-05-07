@@ -1,4 +1,4 @@
-package timelines_v1
+package timelines
 
 import (
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
@@ -40,6 +40,16 @@ func TimelineResponseFromTimeline(timeline timelines.Timeline) TimelineResponse 
 }
 
 func (api *Api) GetTimeline(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	timeline, err := api.service.GetTimeline(userId)
+	if err != nil {
+		internal.ReplyWithError(w, r, err, http.StatusNotFound)
+		return
+	}
+
+	internal.ReplyWithStatusOkWithJSON(w, r, TimelineResponseFromTimeline(timeline))
+}
+
+func (api *Api) GetTimelineV1(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
 	timeline, err := api.service.GetTimeline(userId)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusNotFound)

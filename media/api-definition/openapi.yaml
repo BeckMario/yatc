@@ -4,7 +4,7 @@ info:
   description: Media
   version: "1"
 servers:
-  - url: http://localhost:8083/v1
+  - url: http://localhost:8083
 tags:
   - name: media
 paths:
@@ -56,7 +56,6 @@ components:
     MediaUpload:
       type: object
       required:
-        - mediaMetadata
         - media
       properties:
         media:
