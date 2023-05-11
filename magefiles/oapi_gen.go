@@ -222,7 +222,7 @@ func (Generate) All() error {
 	}{
 		{"status", true},
 		{"user", true},
-		{"timeline", false},
+		{"timeline", true},
 		{"media", false},
 	}
 

@@ -19,7 +19,7 @@ func NewTimelineService(repo Repository, followerService followers.Service) *Ser
 	return &Service{repo, followerService}
 }
 
-func (timelineService *Service) GetTimeline(userId uuid.UUID) (timelines.Timeline, error) {
+func (timelineService *Service) GetTimeline(ctx context.Context, userId uuid.UUID) (timelines.Timeline, error) {
 	return timelineService.repo.Get(userId)
 }
 
@@ -29,7 +29,7 @@ func (timelineService *Service) UpdateTimelines(ctx context.Context, userId uuid
 		return err
 	}
 	for _, follower := range allFollowers {
-		timeline, err := timelineService.GetTimeline(follower.Id)
+		timeline, err := timelineService.GetTimeline(context.Background(), follower.Id)
 		if err != nil {
 			if errors.Is(err, internal.NotFoundError(follower.Id)) {
 				timeline = timelines.Timeline{

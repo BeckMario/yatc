@@ -82,5 +82,6 @@ func SetOf[T comparable](values ...T) *Set[T] {
 type contextKey int
 
 const (
-	ContextKeyTraceParent contextKey = iota
+	ContextKeyTraceParent   contextKey = iota
+	ContextKeyAuthorization contextKey = iota
 )

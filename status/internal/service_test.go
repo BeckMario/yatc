@@ -1,6 +1,7 @@
 package statuses
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -53,7 +54,7 @@ func TestService_CreateStatus(t *testing.T) {
 	status := statuses.Status{Id: uuid.New(), Content: "test status", UserId: uuid.New()}
 
 	// WHEN
-	createdStatus, err := service.CreateStatus(status)
+	createdStatus, err := service.CreateStatus(context.Background(), status)
 
 	// THEN
 	assert.Nil(t, err)

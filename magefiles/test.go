@@ -114,3 +114,13 @@ func (t Test) ComponentStatus() error {
 	fmt.Println(stdout)
 	return err
 }
+
+func (t Test) E2E() error {
+	//TODO: do it
+	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	return nil
+}

@@ -1,6 +1,7 @@
 package statuses
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"yatc/status/pkg"
 )
@@ -34,7 +35,7 @@ func (statusService *Service) GetStatus(statusId uuid.UUID) (statuses.Status, er
 	return statusService.repo.Get(statusId)
 }
 
-func (statusService *Service) CreateStatus(status statuses.Status) (statuses.Status, error) {
+func (statusService *Service) CreateStatus(ctx context.Context, status statuses.Status) (statuses.Status, error) {
 	createdStatus, err := statusService.repo.Create(status)
 	if err != nil {
 		return statuses.Status{}, err

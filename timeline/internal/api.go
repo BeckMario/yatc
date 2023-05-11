@@ -1,6 +1,7 @@
 package timelines
 
 import (
+	"context"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -40,7 +41,7 @@ func TimelineResponseFromTimeline(timeline timelines.Timeline) TimelineResponse 
 }
 
 func (api *Api) GetTimeline(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
-	timeline, err := api.service.GetTimeline(userId)
+	timeline, err := api.service.GetTimeline(context.Background(), userId)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		return
@@ -50,7 +51,7 @@ func (api *Api) GetTimeline(w http.ResponseWriter, r *http.Request, userId opena
 }
 
 func (api *Api) GetTimelineV1(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
-	timeline, err := api.service.GetTimeline(userId)
+	timeline, err := api.service.GetTimeline(context.Background(), userId)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusNotFound)
 		return

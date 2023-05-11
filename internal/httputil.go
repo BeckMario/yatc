@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -50,4 +52,55 @@ func ReplyWithStatusWithJSON(w http.ResponseWriter, r *http.Request, status int,
 
 func ReplyWithStatusOk(r *http.Request) {
 	render.Status(r, http.StatusOK)
+}
+
+func ToClientError(response *http.Response, err error) *ClientError {
+	if err != nil {
+		return NewClientError(nil, err)
+	}
+
+	if response.StatusCode != http.StatusOK {
+		var errorResponse ErrorResponse
+		err := render.DecodeJSON(response.Body, &errorResponse)
+		if err != nil {
+			return NewClientError(nil, err)
+		}
+
+		if response.StatusCode == http.StatusNotFound {
+			id, err := uuid.Parse(errorResponse.Message)
+			if err != nil {
+				return NewClientError(&errorResponse, err)
+			}
+			return NewClientError(&errorResponse, NotFoundError(id))
+		}
+
+		return NewClientError(&errorResponse, nil)
+	}
+	return nil
+}
+
+func OapiClientAuthRequestFn() func(ctx context.Context, req *http.Request) error {
+	return func(ctx context.Context, req *http.Request) error {
+		value := ctx.Value(ContextKeyAuthorization)
+		if value != nil {
+			jwt, ok := value.(string)
+			if ok {
+				req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+			}
+		}
+		return nil
+	}
+}
+
+func OapiClientTraceRequestFn() func(ctx context.Context, req *http.Request) error {
+	return func(ctx context.Context, req *http.Request) error {
+		value := ctx.Value(ContextKeyTraceParent)
+		if value != nil {
+			trace, ok := value.(string)
+			if ok {
+				req.Header.Add("Traceparent", trace)
+			}
+		}
+		return nil
+	}
 }

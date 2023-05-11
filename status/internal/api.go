@@ -1,6 +1,7 @@
 package statuses
 
 import (
+	"context"
 	"errors"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/go-chi/chi/v5"
@@ -54,7 +55,7 @@ func (api *Api) CreateStatus(w http.ResponseWriter, r *http.Request, params stat
 	}
 
 	status := StatusFromCreateStatusRequest(createStatusRequest, params.XUser)
-	status, err = service.CreateStatus(status)
+	status, err = service.CreateStatus(context.Background(), status)
 	if err != nil {
 		internal.ReplyWithError(w, r, err, http.StatusInternalServerError)
 		return

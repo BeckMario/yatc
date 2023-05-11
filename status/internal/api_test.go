@@ -2,6 +2,7 @@ package statuses
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -35,7 +36,7 @@ func (service *MockService) GetStatus(statusId uuid.UUID) (statuses.Status, erro
 	return statuses.Status{}, internal.NotFoundError(statusId)
 }
 
-func (service *MockService) CreateStatus(status statuses.Status) (statuses.Status, error) {
+func (service *MockService) CreateStatus(ctx context.Context, status statuses.Status) (statuses.Status, error) {
 	service.statuses = append(service.statuses, status)
 	return status, nil
 }

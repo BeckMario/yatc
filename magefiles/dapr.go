@@ -56,7 +56,7 @@ func (Run) Login() error {
 
 func (Run) Krakend() error {
 	service := "krakend"
-	appPort := 8085
+	appPort := 8086
 	daprPort := 3505
 
 	_ = sh.Run("docker", "stop", "krakend")

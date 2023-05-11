@@ -1,0 +1,7 @@
+package: timelines
+generate:
+  client: true
+  models: true
+output: ./timeline/pkg/timeline_client.gen.go
+import-mapping:
+  ../../status/api-definition/openapi.yaml: yatc/status/pkg

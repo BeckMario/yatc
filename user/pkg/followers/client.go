@@ -23,58 +23,24 @@ func UserResponseToUser(userResponse api.UserResponse) users.User {
 }
 
 func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
-	//TODO: Could use NewClientWithResponses
 	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
 
-	traceRequestFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		value := ctx.Value(internal.ContextKeyTraceParent)
-		if value != nil {
-			trace, ok := value.(string)
-			if ok {
-				req.Header.Add("Traceparent", trace)
-			}
-		}
-		return nil
-	})
+	traceRequestFn := api.WithRequestEditorFn(internal.OapiClientTraceRequestFn())
+	authRequestFn := api.WithRequestEditorFn(internal.OapiClientAuthRequestFn())
 
 	daprHeaderFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("dapr-app-id", config.AppIds.User)
 		return nil
 	})
 
-	httpClient, _ := api.NewClient(server, traceRequestFn, daprHeaderFn)
+	httpClient, _ := api.NewClient(server, traceRequestFn, daprHeaderFn, authRequestFn)
 
 	return &FollowerClient{httpClient}
 }
 
-func ToClientError(response *http.Response, err error) *internal.ClientError {
-	if err != nil {
-		return internal.NewClientError(nil, err)
-	}
-
-	if response.StatusCode != http.StatusOK {
-		var errorResponse internal.ErrorResponse
-		err := render.DecodeJSON(response.Body, &errorResponse)
-		if err != nil {
-			return internal.NewClientError(nil, err)
-		}
-
-		if response.StatusCode == http.StatusNotFound {
-			id, err := uuid.Parse(errorResponse.Message)
-			if err != nil {
-				return internal.NewClientError(&errorResponse, err)
-			}
-			return internal.NewClientError(&errorResponse, internal.NotFoundError(id))
-		}
-
-		return internal.NewClientError(&errorResponse, nil)
-	}
-	return nil
-}
-
 func (client *FollowerClient) GetFollowers(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
 	response, err := client.httpClient.GetFollowers(ctx, userId)
-	clientError := ToClientError(response, err)
+	clientError := internal.ToClientError(response, err)
 	if clientError != nil {
 		return nil, clientError
 	}
@@ -96,7 +62,7 @@ func (client *FollowerClient) GetFollowers(ctx context.Context, userId uuid.UUID
 
 func (client *FollowerClient) GetFollowees(ctx context.Context, userId uuid.UUID) ([]users.User, error) {
 	response, err := client.httpClient.GetFollowees(ctx, userId)
-	clientError := ToClientError(response, err)
+	clientError := internal.ToClientError(response, err)
 	if clientError != nil {
 		return nil, clientError
 	}
@@ -114,12 +80,13 @@ func (client *FollowerClient) FollowUser(ctx context.Context, userToFollowId uui
 	body := api.FollowUserJSONRequestBody{Id: userWhichFollowsId}
 	params := api.FollowUserParams{XUser: userToFollowId}
 	response, err := client.httpClient.FollowUser(ctx, userToFollowId, &params, body)
-	clientError := ToClientError(response, err)
+	clientError := internal.ToClientError(response, err)
 	if clientError != nil {
 		return users.User{}, clientError
 	}
+
 	var user users.User
-	err = render.DecodeJSON(response.Body, user)
+	err = render.DecodeJSON(response.Body, &user)
 	if err != nil {
 		return users.User{}, err
 	}
@@ -130,7 +97,7 @@ func (client *FollowerClient) UnfollowUser(ctx context.Context, userToFollowId u
 	//TODO: Should somehow use JWT Here instead of header maybe, do request through api gateway? and api gateway pass-through Bearer token
 	params := api.UnfollowUserParams{XUser: userToFollowId}
 	response, err := client.httpClient.UnfollowUser(ctx, userToFollowId, userWhichFollowsId, &params)
-	clientError := ToClientError(response, err)
+	clientError := internal.ToClientError(response, err)
 	if clientError != nil {
 		return clientError
 	}
