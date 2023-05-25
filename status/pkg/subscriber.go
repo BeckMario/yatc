@@ -17,7 +17,7 @@ const (
 )
 
 type Subscriber interface {
-	Subscribe(context context.Context, handler func(status Status)) error
+	Subscribe(handler func(ctx context.Context, status Status))
 }
 
 type StatusCloudEvent struct {

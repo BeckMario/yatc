@@ -29,7 +29,10 @@ func NewFollowerClient(config internal.DaprConfig) *FollowerClient {
 	authRequestFn := api.WithRequestEditorFn(internal.OapiClientAuthRequestFn())
 
 	daprHeaderFn := api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Add("dapr-app-id", config.AppIds.User)
+		if config.AppId == "" {
+			config.AppId = "user-service"
+		}
+		req.Header.Add("dapr-app-id", config.AppId)
 		return nil
 	})
 

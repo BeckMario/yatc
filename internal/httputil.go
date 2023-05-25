@@ -16,6 +16,7 @@ type ErrorResponse struct {
 	Path      string
 	Timestamp time.Time
 	Message   string
+	Status    int
 }
 
 func ReplyWithError(w http.ResponseWriter, r *http.Request, err error, status int) {
@@ -59,9 +60,10 @@ func ToClientError(response *http.Response, err error) *ClientError {
 		return NewClientError(nil, err)
 	}
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
 		var errorResponse ErrorResponse
-		err := render.DecodeJSON(response.Body, &errorResponse)
+		errorResponse.Status = response.StatusCode
+		err = render.DecodeJSON(response.Body, &errorResponse)
 		if err != nil {
 			return NewClientError(nil, err)
 		}

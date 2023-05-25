@@ -20,7 +20,10 @@ func NewStatusClient(config internal.DaprConfig) *StatusClient {
 	authRequestFn := WithRequestEditorFn(internal.OapiClientAuthRequestFn())
 
 	daprHeaderFn := WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Add("dapr-app-id", config.AppIds.User)
+		if config.AppId == "" {
+			config.AppId = "status-service"
+		}
+		req.Header.Add("dapr-app-id", config.AppId)
 		return nil
 	})
 

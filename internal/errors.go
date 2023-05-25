@@ -21,7 +21,11 @@ func NewClientError(errorResponse *ErrorResponse, cause error) *ClientError {
 }
 
 func (err ClientError) Error() string {
-	return fmt.Sprintf("Client Error Cause: %s ErrorResponse: %v", err.cause.Error(), err.errorResponse)
+	if err.cause == nil {
+		return fmt.Sprintf("Client Error Cause: %v ErrorResponse: %v", nil, err.errorResponse)
+	} else {
+		return fmt.Sprintf("Client Error Cause: %s ErrorResponse: %v", err.cause.Error(), err.errorResponse)
+	}
 }
 
 func (err ClientError) Unwrap() error {

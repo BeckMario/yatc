@@ -12,12 +12,7 @@ type Config struct {
 }
 
 type DaprConfig struct {
-	AppIds struct {
-		Status   string `yaml:"status" env:"DAPR_STATUS_APP_ID" env-default:"status-service"`
-		User     string `yaml:"user" env:"DAPR_USER_APP_ID" env-default:"user-service"`
-		Timeline string `yaml:"timeline" env:"DAPR_TIMELINE_APP_ID" env-default:"timeline-service"`
-		Media    string `yaml:"media" env:"DAPR_MEDIA_APP_ID" env-default:"media-service"`
-	} `yaml:"app-ids"`
+	AppId      string           `yaml:"appId" env:"DAPR_APP_ID"`
 	Host       string           `yaml:"host" env:"DAPR_HOST" env-default:"http://localhost"`
 	HttpPort   string           `yaml:"http-port" env:"DAPR_HTTP_PORT" env-default:"3500"`
 	GrpcPort   string           `yaml:"grpc-port" env:"DAPR_GRPC_PORT" env-default:"50001"`

@@ -7,6 +7,7 @@ import (
 	"dagger.io/dagger"
 	"fmt"
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/sh"
 	"os"
 	"time"
 )
@@ -115,12 +116,19 @@ func (t Test) ComponentStatus() error {
 	return err
 }
 
-func (t Test) E2E() error {
-	//TODO: do it
-	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	return nil
+//func (t Test) E2E() error {
+//	//TODO: do it
+//	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
+//	if err != nil {
+//		return err
+//	}
+//	defer client.Close()
+//	return nil
+//}
+
+func (t Test) E2eLocal() error {
+	args := []string{"run"}
+	args = append(args, runDaprArgs("e2e", 9999, 9998)...)
+	args = append(args, []string{"--", "go", "test", "test-e2e/e2e_test.go"}...)
+	return sh.RunWithV(nil, "dapr", args...)
 }

@@ -21,7 +21,10 @@ func NewTimelineClient(config internal.DaprConfig) *TimelineClient {
 	authRequestFn := WithRequestEditorFn(internal.OapiClientAuthRequestFn())
 
 	daprHeaderFn := WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Add("dapr-app-id", config.AppIds.User)
+		if config.AppId == "" {
+			config.AppId = "timeline-service"
+		}
+		req.Header.Add("dapr-app-id", config.AppId)
 		return nil
 	})
 

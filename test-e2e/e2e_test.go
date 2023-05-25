@@ -2,8 +2,13 @@ package test_e2e
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/dapr/go-sdk/service/common"
+	daprd "github.com/dapr/go-sdk/service/http"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"testing"
 	"time"
 	"yatc/internal"
@@ -15,10 +20,14 @@ import (
 )
 
 func TestCreateStatus(t *testing.T) {
-	logger, sync := internal.NewZapLogger()
-	defer sync(logger)
+	logger := zap.NewNop()
 
 	config := internal.NewConfig("config.yaml", logger)
+	config.Dapr.AppId = "krakend-service"
+
+	statusChan := make(chan statuses.Status, 1)
+	timelineChan := make(chan bool, 1)
+	setUpPubSub(t, config, statusChan, timelineChan)
 
 	userClient := users.NewUserClient(config.Dapr)
 	followerClient := followers.NewFollowerClient(config.Dapr)
@@ -57,9 +66,21 @@ func TestCreateStatus(t *testing.T) {
 	createdStatus, err := statusClient.CreateStatus(context.WithValue(context.Background(), internal.ContextKeyAuthorization, jwtUser2), status)
 	assert.NoError(t, err)
 
-	// Wait for Creation of Timeline, because Async Communication with Pub/Sub between Status and Timeline Service is happening
-	// TODO: For more consistency i could do the test with a dapr sidecar and subscribe the status topic
-	time.Sleep(50 * time.Millisecond)
+	// Waiting for status pub sub
+	select {
+	case statusR := <-statusChan:
+		assert.Equal(t, createdStatus.Id, statusR.Id, "status in pubsub is equal to created status")
+	case <-time.After(5 * time.Second):
+		assert.Fail(t, "5s timeout while waiting for pub/sub status event")
+	}
+
+	// Waiting for timeline pub sub
+	select {
+	case <-timelineChan:
+		break
+	case <-time.After(5 * time.Second):
+		assert.Fail(t, "5s timeout while waiting for pub/sub timeline event")
+	}
 
 	// User 1 Get Timeline
 	timeline, err := timelineClient.GetTimeline(context.WithValue(context.Background(), internal.ContextKeyAuthorization, jwtUser1), user1.Id)
@@ -74,4 +95,36 @@ func TestCreateStatus(t *testing.T) {
 	}
 
 	assert.True(t, found, "timeline contains status")
+}
+
+func setUpPubSub(t *testing.T, config *internal.Config, statusChan chan statuses.Status, timelineChan chan bool) {
+	s := daprd.NewService(fmt.Sprintf(":%s", config.Port))
+	subStatus := &common.Subscription{
+		PubsubName: config.Dapr.PubSub.Name,
+		Topic:      "status",
+		Route:      "/pubsub/status",
+	}
+	subTimeline := &common.Subscription{
+		PubsubName: config.Dapr.PubSub.Name,
+		Topic:      "timeline",
+		Route:      "/pubsub/timeline",
+	}
+	err := s.AddTopicEventHandler(subStatus, func(ctx context.Context, e *common.TopicEvent) (retry bool, err error) {
+		var status statuses.Status
+		data := e.RawData
+		_ = json.Unmarshal(data, &status)
+		statusChan <- status
+		return false, nil
+	})
+	assert.NoError(t, err)
+	err = s.AddTopicEventHandler(subTimeline, func(ctx context.Context, e *common.TopicEvent) (retry bool, err error) {
+		timelineChan <- true
+		return false, nil
+	})
+	assert.NoError(t, err)
+
+	go func() {
+		err := s.Start()
+		assert.NoError(t, err)
+	}()
 }

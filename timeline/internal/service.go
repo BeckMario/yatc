@@ -3,6 +3,7 @@ package timelines
 import (
 	"context"
 	"errors"
+	dapr "github.com/dapr/go-sdk/client"
 	"github.com/google/uuid"
 	"yatc/internal"
 	statuses "yatc/status/pkg"
@@ -13,10 +14,12 @@ import (
 type Service struct {
 	repo            Repository
 	followerService followers.Service
+	client          dapr.Client
+	config          internal.PubSubConfig
 }
 
-func NewTimelineService(repo Repository, followerService followers.Service) *Service {
-	return &Service{repo, followerService}
+func NewTimelineService(repo Repository, followerService followers.Service, client dapr.Client, config internal.PubSubConfig) *Service {
+	return &Service{repo, followerService, client, config}
 }
 
 func (timelineService *Service) GetTimeline(ctx context.Context, userId uuid.UUID) (timelines.Timeline, error) {
@@ -45,6 +48,11 @@ func (timelineService *Service) UpdateTimelines(ctx context.Context, userId uuid
 		if err != nil {
 			return err
 		}
+	}
+
+	err = timelineService.client.PublishEvent(context.Background(), timelineService.config.Name, "timeline", "")
+	if err != nil {
+		return err
 	}
 
 	return nil

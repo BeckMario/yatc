@@ -25,7 +25,7 @@ func main() {
 
 	repo := timelines.NewDaprRepo(client, config.Dapr.StateStore) //timelines.NewInMemoryRepo()
 	followerClient := followers.NewFollowerClient(config.Dapr)
-	service := timelines.NewTimelineService(repo, followerClient)
+	service := timelines.NewTimelineService(repo, followerClient, client, config.Dapr.PubSub)
 	api := timelines.NewTimelineApi(service)
 
 	port, err := strconv.Atoi(config.Port)

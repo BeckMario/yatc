@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"gopkg.in/yaml.v3"
@@ -62,7 +63,7 @@ func (Run) Krakend() error {
 	_ = sh.Run("docker", "stop", "krakend")
 
 	dockerArgs := []string{"--", "docker", "run", "--rm", "--name", "krakend",
-		"--network", "host", "--pull", "always", "reg.technicalonions.de/krakend-service:local"}
+		"--network", "host", "--pull", "always", "-e", fmt.Sprintf("KRAKEND_PORT=%d", appPort), "reg.technicalonions.de/krakend-service:local"}
 
 	args := []string{"run"}
 	args = append(args, runDaprArgs(service, appPort, daprPort)...)
@@ -149,5 +150,5 @@ func (Run) MediaConversion() error {
 
 // All Run all services
 func (Run) All() {
-	mg.Deps(Run.User, Run.Status, Run.Timeline, Run.Media)
+	mg.Deps(Run.User, Run.Status, Run.Timeline, Run.Media, Run.Krakend, Run.Login)
 }

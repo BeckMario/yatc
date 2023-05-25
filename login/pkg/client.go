@@ -12,13 +12,18 @@ import (
 )
 
 type LoginClient struct {
-	url string
+	url   string
+	appId string
 }
 
 func NewLoginClient(config internal.DaprConfig) *LoginClient {
 	server := fmt.Sprintf("%s:%s", config.Host, config.HttpPort)
+	if config.AppId == "" {
+		config.AppId = "login-service"
+	}
 	return &LoginClient{
-		url: server,
+		url:   server,
+		appId: config.AppId,
 	}
 }
 
@@ -32,7 +37,6 @@ type Request struct {
 }
 
 func (client *LoginClient) Login(username string, userId uuid.UUID) (string, error) {
-
 	request := Request{
 		Username: username,
 		Id:       userId.String(),
@@ -46,7 +50,7 @@ func (client *LoginClient) Login(username string, userId uuid.UUID) (string, err
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/login", client.url), strings.NewReader(string(payload)))
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("dapr-app-id", "login-service")
+	req.Header.Add("dapr-app-id", client.appId)
 
 	res, err := http.DefaultClient.Do(req)
 	defer func(Body io.ReadCloser) {
