@@ -13,6 +13,14 @@ import (
 
 type Build mg.Namespace
 
+func krakendContainer(client *dagger.Client, env string) *dagger.Container {
+	krakendDir := client.Host().Directory("./infrastructure/krakend")
+
+	return krakendDir.DockerBuild(dagger.DirectoryDockerBuildOpts{
+		BuildArgs: []dagger.BuildArg{{Name: "ENV", Value: env}},
+	})
+}
+
 func (b Build) krakend() error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
@@ -27,11 +35,7 @@ func (b Build) krakend() error {
 		krakendImage = "reg.technicalonions.de/krakend-service:local"
 	}
 
-	krakendDir := client.Host().Directory("./infrastructure/krakend")
-
-	_, err = krakendDir.DockerBuild(dagger.DirectoryDockerBuildOpts{
-		BuildArgs: []dagger.BuildArg{{Name: "ENV", Value: env}},
-	}).Publish(context.Background(), krakendImage)
+	_, err = krakendContainer(client, env).Publish(context.Background(), krakendImage)
 	if err != nil {
 		return err
 	}
