@@ -22,9 +22,7 @@ import (
 )
 
 func TestCreateStatus(t *testing.T) {
-	logger := zap.NewNop()
-
-	config := internal.NewConfig("config.yaml", logger)
+	config := internal.NewConfig("config.yaml", zap.NewNop())
 	config.Dapr.AppId = "krakend-service"
 
 	statusChan := make(chan statuses.Status, 1)
@@ -55,8 +53,11 @@ func TestCreateStatus(t *testing.T) {
 	jwtUser2, err := loginClient.Login(user2.Name, user2.Id)
 	assert.NoError(t, err)
 
+	ctx := context.Background()
+
 	// User 1 follows User 2
-	_, err = followerClient.FollowUser(context.WithValue(context.Background(), internal.ContextKeyAuthorization, jwtUser1), user2.Id, user1.Id)
+	_, err = followerClient.
+		FollowUser(context.WithValue(ctx, internal.ContextKeyAuthorization, jwtUser1), user2.Id, user1.Id)
 	assert.NoError(t, err)
 
 	// User 2 Creates Status
@@ -65,7 +66,8 @@ func TestCreateStatus(t *testing.T) {
 		Content: "New Status",
 		UserId:  user2.Id,
 	}
-	createdStatus, err := statusClient.CreateStatus(context.WithValue(context.Background(), internal.ContextKeyAuthorization, jwtUser2), status)
+	createdStatus, err := statusClient.
+		CreateStatus(context.WithValue(ctx, internal.ContextKeyAuthorization, jwtUser2), status)
 	assert.NoError(t, err)
 
 	// Waiting for status pub sub
@@ -85,7 +87,8 @@ func TestCreateStatus(t *testing.T) {
 	}
 
 	// User 1 Get Timeline
-	timeline, err := timelineClient.GetTimeline(context.WithValue(context.Background(), internal.ContextKeyAuthorization, jwtUser1), user1.Id)
+	timeline, err := timelineClient.
+		GetTimeline(context.WithValue(ctx, internal.ContextKeyAuthorization, jwtUser1), user1.Id)
 	assert.NoError(t, err)
 
 	// User 1 Timeline Contains Status of User 2

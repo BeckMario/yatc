@@ -9,7 +9,7 @@ HEALTH_ENDPOINTS=(
   "http://localhost:3506/v1.0/healthz" # Status
 )
 
-MAX_RETRIES=10
+MAX_RETRIES=20
 RETRY_INTERVAL=5
 
 check_health() {
