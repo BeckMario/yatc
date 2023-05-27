@@ -6,22 +6,22 @@ apps:
     appDirPath: ../
     appPort: 8082
     daprHTTPPort: 3506
-    command: [ "go","run", "status/cmd/main.go" ]
+    command: [ "build/status_service" ]
   - appID: timeline-service
     appDirPath: ../
     appPort: 8081
     daprHTTPPort: 3501
-    command: [ "go","run", "timeline/cmd/main.go" ]
+    command: [ "build/timeline_service" ]
   - appID: login-service
     appDirPath: ../
     appPort: 8084
     daprHTTPPort: 3504
-    command: [ "go","run", "login/cmd/main.go" ]
+    command: [ "build/login_service" ]
   - appID: user-service
     appDirPath: ../
     appPort: 8085
     daprHTTPPort: 3502
-    command: [ "go","run", "user/cmd/main.go" ]
+    command: [ "build/user_service" ]
   - appID: krakend-service
     appDirPath: ../
     appPort: 8080

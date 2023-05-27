@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	dapr "github.com/dapr/go-sdk/client"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -32,12 +31,6 @@ func main() {
 	defer sync(logger)
 
 	config := internal.NewConfig("login/config/config.yaml", logger)
-
-	client, err := dapr.NewClientWithPort(config.Dapr.GrpcPort)
-	if err != nil {
-		logger.Fatal("cant connect to dapr sidecar", zap.Error(err))
-	}
-	defer client.Close()
 
 	port, err := strconv.Atoi(config.Port)
 	if err != nil {

@@ -124,6 +124,11 @@ func (t Test) E2E() error {
 	defer client.Close()
 
 	directory := client.Host().Directory(".")
+	baseContainer := goBase(client).WithEnvVariable("NO_DAGGER_CACHE", time.Now().String())
+
+	for _, service := range []string{"status", "timeline", "login", "user"} {
+		baseContainer = baseContainer.WithExec([]string{"go", "build", "-o", fmt.Sprintf("build/%s_service", service), fmt.Sprintf("yatc/%s/cmd", service)})
+	}
 
 	redis := client.Container().
 		From("redis").
@@ -155,6 +160,8 @@ func (t Test) E2E() error {
 		WithFile("/usr/app/go.sum", directory.File("go.sum")).
 		WithExec([]string{"go", "mod", "download"}).
 		WithMountedDirectory("", directory).
+		// Add built services
+		WithDirectory("/usr/app/build", baseContainer.Directory("build")).
 		WithServiceBinding("redis", redis).
 		WithEnvVariable("NO_DAGGER_CACHE", time.Now().String()).
 		// Run E2E
