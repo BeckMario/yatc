@@ -9,7 +9,6 @@ import (
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -117,25 +116,6 @@ func (t Test) ComponentStatus() error {
 	return err
 }
 
-func daprArgs(service string, appPort int, daprPort int) []string {
-	args := []string{"dapr", "run"}
-	args = append(args, []string{"--app-id", service + "-service", "--app-port", strconv.Itoa(appPort),
-		"--dapr-http-port", strconv.Itoa(daprPort), "--resources-path", "./status/config/test-components"}...)
-	return args
-}
-
-func daprArgsWithScreen(service string, appPort int, daprPort int) []string {
-	args := []string{"screen", "-d", "-m"}
-	args = append(args, daprArgs(service, appPort, daprPort)...)
-	return args
-}
-
-func runServiceWithDapr(service string, appPort int, daprPort int) []string {
-	runStatusWithDapr := daprArgsWithScreen(service, appPort, daprPort)
-	runStatusWithDapr = append(runStatusWithDapr, []string{"--", "go", "run", service + "/cmd/main.go", "&"}...)
-	return runStatusWithDapr
-}
-
 func (t Test) E2E() error {
 	client, err := dagger.Connect(context.Background(), dagger.WithLogOutput(os.Stdout))
 	if err != nil {
@@ -153,45 +133,39 @@ func (t Test) E2E() error {
 	krakendConfig := krakendContainer(client, "local").File("krakend.json")
 	krakendJWK := krakendContainer(client, "local").File("/usr/jwk_private_key.json")
 
-	runKrakendArgs := daprArgsWithScreen("krakend-service", 8080, 3505)
-	runKrakendArgs = append(runKrakendArgs, "--")
-	runKrakendArgs = append(runKrakendArgs, []string{"krakend", "run", "-c", "/tmp/krakend.json"}...)
-
-	e2eTestArgs := daprArgs("e2e", 9999, 9998)
-	e2eTestArgs = append(e2eTestArgs, []string{"--", "go", "test", "test-e2e/e2e_test.go"}...)
-
-	// Prepare Status Client. Dapr is needed as Dependency
 	e2eTest := client.Container().From("ubuntu:18.04").
-		WithFile("/tmp/krakend.json", krakendConfig).
-		WithFile("/usr/jwk_private_key.json", krakendJWK).
+		WithExec([]string{"apt", "update"}).
+		WithExec([]string{"apt", "install", "-y", "wget", "curl"}).
+		// install krakend and go
 		WithExec([]string{"wget", "-q", "https://repo.krakend.io/bin/krakend_2.3.2_amd64_generic-linux.tar.gz"}).
+		WithExec([]string{"tar", "-C", "/usr/local", "-xzf", "krakend_2.3.2_amd64_generic-linux.tar.gz"}).
 		WithExec([]string{"wget", "-q", "https://go.dev/dl/go1.20.4.linux-amd64.tar.gz"}).
 		WithExec([]string{"tar", "-C", "/usr/local", "-xzf", "go1.20.4.linux-amd64.tar.gz"}).
-		WithExec([]string{"tar", "-C", "/usr/local", "-xzf", "krakend_2.3.2_amd64_generic-linux.tar.gz"}).
+		WithEnvVariable("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/usr/local/usr/bin").
+		WithFile("/tmp/krakend.json", krakendConfig).
+		WithFile("/usr/jwk_private_key.json", krakendJWK).
 		// Prepare Dapr
-		WithExec([]string{"apt", "update"}).
-		WithExec([]string{"apt", "install", "-y", "wget", "screen"}).
 		WithExec([]string{"wget", "-q", "https://raw.githubusercontent.com/dapr/cli/master/install/install.sh"}).
 		WithExec([]string{"chmod", "+x", "install.sh"}).
 		WithExec([]string{"./install.sh"}).
 		WithExec([]string{"dapr", "init", "--slim"}).
+		// Prepare Go Mod
 		WithWorkdir("/usr/app/").
+		WithFile("/usr/app/go.mod", directory.File("go.mod")).
+		WithFile("/usr/app/go.sum", directory.File("go.sum")).
+		WithExec([]string{"go", "mod", "download"}).
 		WithMountedDirectory("", directory).
 		WithServiceBinding("redis", redis).
-		// Start all Services
-		WithExec(runServiceWithDapr("status", 8081, 3081)).
-		WithExec(runServiceWithDapr("timeline", 8082, 3082)).
-		WithExec(runServiceWithDapr("media", 8083, 3083)).
-		WithExec(runServiceWithDapr("login", 8084, 3084)).
-		WithExec(runKrakendArgs).
-		// Run E2E Test
-		WithExec(e2eTestArgs)
+		WithEnvVariable("NO_DAGGER_CACHE", time.Now().String()).
+		// Run E2E
+		WithExec([]string{"test-e2e/run.sh"})
 
 	stdout, err := e2eTest.Stdout(context.Background())
 	fmt.Println(stdout)
 	return err
 }
 
+// E2eLocal all services must be running, for this test to be working
 func (t Test) E2eLocal() error {
 	args := []string{"run"}
 	args = append(args, runDaprArgs("e2e", 9999, 9998)...)

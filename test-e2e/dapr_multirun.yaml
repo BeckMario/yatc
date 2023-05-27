@@ -1,0 +1,29 @@
+version: 1
+common:
+  resourcesPath: ./components
+apps:
+  - appID: status-service
+    appDirPath: ../
+    appPort: 8082
+    daprHTTPPort: 3506
+    command: [ "go","run", "status/cmd/main.go" ]
+  - appID: timeline-service
+    appDirPath: ../
+    appPort: 8081
+    daprHTTPPort: 3501
+    command: [ "go","run", "timeline/cmd/main.go" ]
+  - appID: login-service
+    appDirPath: ../
+    appPort: 8084
+    daprHTTPPort: 3504
+    command: [ "go","run", "login/cmd/main.go" ]
+  - appID: user-service
+    appDirPath: ../
+    appPort: 8085
+    daprHTTPPort: 3502
+    command: [ "go","run", "user/cmd/main.go" ]
+  - appID: krakend-service
+    appDirPath: ../
+    appPort: 8080
+    daprHTTPPort: 3505
+    command: [ "krakend", "run", "-c", "/tmp/krakend.json" ]

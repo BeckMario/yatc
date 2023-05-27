@@ -20,10 +20,12 @@ jobs:
         run: go run ./magefiles/main.go lint
       - name: unit test services
         run: go run ./magefiles/main.go test:unit
-#      - name: integration test for status services
+      #      - name: integration test for status services
       #        run: go run ./magefiles/main.go test:integrationStatus
       - name: component test for status services
         run: go run ./magefiles/main.go test:componentStatus
+      - name: e2e test
+        run: go run ./magefiles/main.go test:e2e
 
       - uses: docker/login-action@v2
         with:
